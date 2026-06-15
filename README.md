@@ -29,7 +29,7 @@ return {
 
   -- 2. Load and configure foyer.nvim
   {
-    "yourusername/foyer.nvim",
+    "kevanoullio/foyer.nvim",
     lazy = false, -- Load immediately on startup
     priority = 1000, -- Initialize before other plugins
     dependencies = { "nvim-tree/nvim-web-devicons" }, -- Optional: for menu icons
@@ -52,7 +52,7 @@ Add this entry to your plugin specifications:
 ```lua
 require("lazy").setup({
   {
-    "yourusername/foyer.nvim",
+    "kevanoullio/foyer.nvim",
     lazy = false,
     priority = 1000,
     config = function()
