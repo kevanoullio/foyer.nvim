@@ -49,7 +49,7 @@ function M.render()
   local canvas = Canvas.new(width, height)
 
   -- Step 1: Render background layer (Opaque)
-  -- require("foyer.layers.background").render(canvas, width, height)
+  require("foyer.layers.background").render(canvas, width, height)
 
   -- Step 2: Render foreground components sequentially using composition math (Transparent)
   local current_row = math.floor(height * 0.15)
