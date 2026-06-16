@@ -26,7 +26,7 @@ function M.open()
   vim.wo.number = false
   vim.wo.relativenumber = false
   vim.wo.signcolumn = "no"
-  vim.wo.foldcolumn = 0
+  vim.wo.foldcolumn = "0"
 
   M.render()
 
