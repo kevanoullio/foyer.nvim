@@ -38,6 +38,18 @@ M.config = {
   },
 }
 
+function M.setup(opts)
+  M.config = vim.tbl_deep_extend("force", M.config, opts or {})
+
+  -- Automatically trigger Foyer on VimEnter if starting with an empty buffer
+  vim.api.nvim_create_autocmd("VimEnter", {
+    callback = function()
+      if vim.fn.argc() == 0 and vim.api.nvim_buf_get_name(0) == "" and vim.bo.buftype == "" then
+        require("foyer.ui").open()
+      end
+    end,
+  })
+
   -- Expose user command
   vim.api.nvim_create_user_command("Foyer", function()
     require("foyer.ui").open()
