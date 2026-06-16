@@ -7,6 +7,8 @@
 * **True Character Transparency:** Background components (like custom starfields) seamlessly peek through empty spacing in foreground elements.
 * **Flawless Resizing:** Instant layout grid recalculations on terminal resize without window clipping or race conditions.
 * **Isolated Interactivity:** Robust cursor-locking mechanics that restrict navigation strictly to active menu lines.
+* **Three Background Modes:** Static file (centered .txt), procedural generation (theme-based), or blank.
+* **Pluggable Generators:** Drop-in Lua modules under `lua/foyer/generators/` for custom background themes.
 
 ---
 
@@ -67,6 +69,66 @@ require("lazy").setup({
 
 ---
 
+## ⚙️ Configuration
+
+All options are passed to `require("foyer").setup({ ... })`.
+
+```lua
+require("foyer").setup({
+  background = {
+    -- "file"      Load a static .txt file, centered on screen.
+    --               Falls back to "blank" if path is missing or unreadable.
+    -- "generated" Procedurally generated art from a built-in theme.
+    -- "blank"     No background (default).
+    type = "blank",
+
+    -- Path to a .txt file (only for type = "file").
+    path = nil,
+
+    -- Theme name (only for type = "generated").
+    -- Available: "stars", "waves"
+    theme = "stars",
+
+    -- Highlight group applied to every background cell.
+    hl = "Comment",
+  },
+
+  header = {
+    art = {
+      " ██╗      █████╗ ███████╗██╗   ██╗██╗   ██╗██╗███╗   ███╗          Z ",
+      " ██║     ██╔══██╗╚══███╔╝╚██╗ ██╔╝██║   ██║██║████╗ ████║      Z     ",
+      " ██║     ███████║  ███╔╝  ╚████╔╝ ██║   ██║██║██╔████╔██║   z        ",
+      " ██║     ██╔══██║ ███╔╝    ╚██╔╝  ╚██╗ ██╔╝██║██║╚██╔╝██║ z          ",
+      " ███████╗██║  ██║███████╗   ██║    ╚████╔╝ ██║██║ ╚═╝ ██║            ",
+      " ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝     ╚═══╝  ╚═╝╚═╝     ╚═╝            ",
+    },
+    hl = "Title",
+  },
+
+  menu = {
+    items = {
+      { icon = " ", key = "f", desc = "Find File",       action = function() require("foyer").pick("files") end },
+      { icon = " ", key = "n", desc = "New File",        action = ":ene | startinsert" },
+      { icon = " ", key = "g", desc = "Find Text",       action = function() require("foyer").pick("live_grep") end },
+      { icon = " ", key = "r", desc = "Recent Files",    action = function() require("foyer").pick("oldfiles") end },
+      { icon = " ", key = "c", desc = "Config",          action = ":e $MYVIMRC" },
+      { icon = "󰒲 ", key = "l", desc = "Lazy",            action = ":Lazy" },
+      { icon = " ", key = "q", desc = "Quit",            action = ":qa" },
+    },
+    hl_icon = "Special",
+    hl_desc = "Normal",
+    hl_key = "Keyword",
+  },
+
+  footer = {
+    text = "Welcome back. Time to build.",
+    hl = "Comment",
+  },
+})
+```
+
+---
+
 ## 🛠️ Architecture Overview
 
 The plugin's directory structure isolates presentation logic from data layout computation:
@@ -75,11 +137,16 @@ The plugin's directory structure isolates presentation logic from data layout co
 foyer.nvim/
 ├── lua/
 │   └── foyer/
-│       ├── init.lua          -- Public API & configuration merging
-│       ├── ui.lua            -- Buffer orchestration & resize tracking
-│       ├── canvas.lua        -- The core 2D cell blending & rendering engine
-│       ├── interactive.lua   -- Focus management & keymap processing
-│       └── layers/           -- Data generators for visual components
+│       ├── init.lua            -- Public API & configuration merging
+│       ├── ui.lua              -- Buffer orchestration & resize tracking
+│       ├── canvas.lua          -- The core 2D cell blending & rendering engine
+│       ├── interactive.lua     -- Focus management & keymap processing
+│       ├── loader.lua          -- File I/O utility (reads .txt files)
+│       ├── generators/         -- Procedural background themes
+│       │   ├── init.lua        -- Theme registry & dispatch
+│       │   ├── stars.lua       -- Starfield theme
+│       │   └── waves.lua       -- Wave theme
+│       └── layers/             -- Data generators for visual components
 │           ├── background.lua
 │           ├── header.lua
 │           ├── menu.lua
