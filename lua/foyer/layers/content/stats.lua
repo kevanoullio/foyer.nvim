@@ -1,5 +1,8 @@
 local M = {}
 
+--- Formats a number with comma separators (e.g. 1234 -> "1,234").
+---@param n number
+---@return string
 local function fmt_num(n)
   local s = tostring(n)
   local changed
@@ -87,46 +90,48 @@ function M.render(canvas, width, _, zone, config, bufnr)
     local start_col = 1 + pad.left + col_offset
     canvas:blend({ placeholder }, row, start_col, false, hl)
 
-    -- Async computation
-    local work = vim.uv.new_work(
-      function(p, d)
-        local folders = 0
-        local hidden_folders = 0
-        local files = 0
-        local hidden_files = 0
+    --- Recursively walks a directory tree up to a given depth and counts
+    --- folders and files (including hidden items).
+    ---@param p string Starting directory path
+    ---@param d integer Maximum recursion depth
+    ---@return integer, integer, integer, integer folders, hidden_folders, files, hidden_files
+    local function scan(p, d)
+      local folders = 0
+      local hidden_folders = 0
+      local files = 0
+      local hidden_files = 0
 
-        local function recurse(dir, in_hidden)
-          local handle = vim.uv.fs_scandir(dir)
-          if not handle then return end
-          local entry
-          while true do
-            entry = vim.uv.fs_scandir_next(handle)
-            if not entry then break end
-            local child_path = vim.fn.joinpath(dir, entry.name)
-            local stat = vim.uv.fs_stat(child_path)
-            if stat and stat.type == "directory" then
-              local child_hidden = in_hidden or (entry.name:sub(1, 1) == ".")
-              folders = folders + 1
-              if child_hidden then hidden_folders = hidden_folders + 1 end
-              if d > 1 then recurse(child_path, child_hidden) end
-            elseif stat and stat.type == "file" then
-              files = files + 1
-              if in_hidden then hidden_files = hidden_files + 1 end
-            end
+      local function recurse(dir, in_hidden)
+        local handle = vim.uv.fs_scandir(dir)
+        if not handle then return end
+        local entry
+        while true do
+          entry = vim.uv.fs_scandir_next(handle)
+          if not entry then break end
+          local child_path = vim.fn.joinpath(dir, entry.name)
+          local stat = vim.uv.fs_stat(child_path)
+          if stat and stat.type == "directory" then
+            local child_hidden = in_hidden or (entry.name:sub(1, 1) == ".")
+            folders = folders + 1
+            if child_hidden then hidden_folders = hidden_folders + 1 end
+            if d > 1 then recurse(child_path, child_hidden) end
+          elseif stat and stat.type == "file" then
+            files = files + 1
+            if in_hidden then hidden_files = hidden_files + 1 end
           end
         end
-
-        recurse(p, false)
-        return folders, hidden_folders, files, hidden_files
-      end,
-      function(err, folders, hidden_folders, files, hidden_files)
-        if err or not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
-        vim.schedule(function()
-          M.update(bufnr, fs_stats_row, folders, hidden_folders, files, hidden_files, config, hl)
-        end)
       end
-    )
-    work:queue(path, depth)
+
+      recurse(p, false)
+      return folders, hidden_folders, files, hidden_files
+    end
+
+    -- Deferred scan so it doesn't block initial render
+    vim.defer_fn(function()
+      local folders, hidden_folders, files, hidden_files = scan(path, depth)
+      if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
+      M.update(bufnr, fs_stats_row, folders, hidden_folders, files, hidden_files, config, hl)
+    end, 10)
 
     row = row + 2
   end
