@@ -91,7 +91,7 @@ M.config = {
       col = "center",
     },
     zone = {
-      percentage = 0.25,
+      percentage = 0.30,
       padding = { top = 2, bot = 2, left = 2, right = 2 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
@@ -114,7 +114,7 @@ M.config = {
       col = "center",
     },
     zone = {
-      percentage = 0.50,
+      percentage = 0.40,
       padding = { top = 2, bot = 2, left = 2, right = 2 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
@@ -154,10 +154,15 @@ M.config = {
       col = "center",
     },
     zone = {
-      percentage = 0.10,
+      percentage = 0.15,
       padding = { top = 2, bot = 2, left = 2, right = 2 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
+  },
+
+  debug = {
+    enabled = false,
+    log_file = "./foyer-debug.log",
   },
 }
 
@@ -181,6 +186,117 @@ function M.setup(opts)
   vim.api.nvim_create_user_command("Foyer", function()
     require("foyer.ui").open()
   end, {})
+
+  -- Debug command
+  vim.api.nvim_create_user_command("FoyerDebug", function()
+    local config = require("foyer").config
+    local screen = require("foyer.lib.screen")
+    local usable = screen.usable()
+
+    local lines = {
+      "## Foyer Debug",
+      string.format("Canvas: %dx%d", usable.width, usable.height),
+      string.format("Total zone pct: %.2f",
+        config.header.zone.percentage + config.menu.zone.percentage +
+        config.stats.zone.percentage + config.footer.zone.percentage),
+      string.format("Debug enabled: %s", tostring(config.debug.enabled)),
+      "",
+      "=== Zone Configs ===",
+    }
+
+    for _, key in ipairs({ "header", "menu", "stats", "footer" }) do
+      local z = config[key].zone
+      lines[#lines + 1] = string.format("%s: pct=%.2f pad={t=%d,b=%d,l=%d,r=%d} margin={t=%d,b=%d,l=%d,r=%d}",
+        key, z.percentage, z.padding.top, z.padding.bot,
+        z.padding.left, z.padding.right, z.margin.top, z.margin.bot,
+        z.margin.left, z.margin.right)
+    end
+
+    -- Compute live zones (reuses ui.lua logic)
+    local function normalize_padding(val)
+      if type(val) == "number" then
+        return { top = val, bot = val, left = val, right = val }
+      end
+      return {
+        top = val.top or 2,
+        bot = val.bot or 2,
+        left = val.left or 2,
+        right = val.right or 2,
+      }
+    end
+
+    local function normalize_margin(val)
+      if type(val) == "number" then
+        return { top = val, bot = val, left = val, right = val }
+      end
+      return {
+        top = val.top or 0,
+        bot = val.bot or 0,
+        left = val.left or 0,
+        right = val.right or 0,
+      }
+    end
+
+    local layers = {
+      { key = "header", zone = config.header.zone },
+      { key = "menu",   zone = config.menu.zone },
+      { key = "stats",  zone = config.stats.zone },
+      { key = "footer", zone = config.footer.zone },
+    }
+
+    for _, layer in ipairs(layers) do
+      layer.zone.padding = normalize_padding(layer.zone.padding)
+      layer.zone.margin = normalize_margin(layer.zone.margin)
+    end
+
+    local total_pct = 0
+    for _, layer in ipairs(layers) do
+      total_pct = total_pct + layer.zone.percentage
+    end
+
+    local remaining_pct = math.max(0, 1.0 - total_pct)
+    local remaining_lines = math.floor(remaining_pct * usable.height)
+    local margin_per_zone = math.floor(remaining_lines / (#layers * 2))
+
+    for _, layer in ipairs(layers) do
+      layer.zone.margin.top = layer.zone.margin.top + margin_per_zone
+      layer.zone.margin.bot = layer.zone.margin.bot + margin_per_zone
+    end
+
+    local zones = {}
+    local current_row = 1
+
+    for _, layer in ipairs(layers) do
+      local zone_height = math.max(1, math.floor(usable.height * layer.zone.percentage))
+      zones[layer.key] = {
+        row = current_row + layer.zone.margin.top,
+        height = zone_height,
+      }
+      current_row = current_row + zone_height + layer.zone.padding.bot
+    end
+
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "=== Computed Zones ==="
+    for _, key in ipairs({ "header", "menu", "stats", "footer" }) do
+      local z = zones[key]
+      lines[#lines + 1] = string.format("%s: row=%d height=%d (row+height=%d)", key, z.row, z.height, z.row + z.height)
+    end
+
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = string.format("Next after footer: row %d (canvas height: %d)", current_row, usable.height)
+
+    if current_row > usable.height + 1 then
+      lines[#lines + 1] = string.format("OVERFLOW: content extends %d lines past canvas", current_row - usable.height - 1)
+    end
+
+    local footer = zones.footer
+    if footer and footer.row + footer.height > usable.height then
+      lines[#lines + 1] = string.format("WARNING: footer zone extends %d lines beyond canvas",
+        footer.row + footer.height - usable.height)
+    end
+
+    vim.notify(lines, vim.log.levels.INFO, { title = "Foyer Debug" })
+  end, { desc = "Debug Foyer dashboard layout" })
 end
 
 return M
