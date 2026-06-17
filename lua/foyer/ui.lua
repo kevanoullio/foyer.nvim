@@ -156,19 +156,27 @@ function M.render()
   local config = require("foyer").config
   local content_zones = compute_content_zones(usable, config)
 
-  -- Debug: log zones when enabled
-  if config.debug and config.debug.enabled then
-    local debug = require("foyer.lib.debug")
+  -- Log zone measurements to file
+  if config.log and config.log.enabled and config.log.zones then
+    local log = require("foyer.lib.log")
+    log.log(config.log.file, os.date("%Y-%m-%d %H:%M:%S"))
     for _, key in ipairs({ "header", "menu", "stats", "footer" }) do
       local z = content_zones[key]
       local c = config[key] and config[key].zone or {}
       local pad = c.padding or {}
       local marg = c.margin or {}
-      debug.log(string.format("[%s] row=%d h=%d pad={t=%d,b=%d,l=%d,r=%d} margin={t=%d,b=%d,l=%d,r=%d}",
-        key, z.row, z.height,
-        pad.top or 0, pad.bot or 0, pad.left or 0, pad.right or 0,
-        marg.top or 0, marg.bot or 0, marg.left or 0, marg.right or 0))
+      log.log(config.log.file,
+        string.format("  [%s] row=%d h=%d pad={t=%d,b=%d,l=%d,r=%d} margin={t=%d,b=%d,l=%d,r=%d}",
+          key, z.row, z.height,
+          pad.top or 0, pad.bot or 0, pad.left or 0, pad.right or 0,
+          marg.top or 0, marg.bot or 0, marg.left or 0, marg.right or 0))
     end
+    log.sep(config.log.file)
+  end
+
+  -- Draw zone boundary overlays on the buffer
+  if config.debug and config.debug.enabled and config.debug.zones then
+    require("foyer.lib.debug").draw_zones(M.bufnr, content_zones, usable.width, config)
   end
 
   -- Create a fresh empty virtual canvas
@@ -197,11 +205,6 @@ function M.render()
   vim.bo[M.bufnr].modifiable = true
   vim.api.nvim_buf_set_lines(M.bufnr, 0, -1, false, text_lines)
   vim.bo[M.bufnr].modifiable = false
-
-  -- Debug: draw zone boundaries on the buffer when enabled
-  if config.debug and config.debug.enabled then
-    require("foyer.lib.debug").draw_zones(M.bufnr, content_zones, usable.width, config)
-  end
 
   -- Clean old highlights and write down new layer colors
   local ns = vim.api.nvim_create_namespace("foyer_highlights")

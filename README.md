@@ -17,41 +17,39 @@
 ## 📦 Installation & Setup
 
 ### Option A: Integration with LazyVim
-To replace the default dashboard in LazyVim, disable the `snacks.nvim` dashboard module and load `foyer.nvim` early in your plugin startup.
 
-Create `lua/plugins/dashboard.lua` and add:
+To replace the default dashboard in LazyVim, disable the `snacks.nvim` dashboard module in one file and configure `foyer.nvim` in its own.
+
+Create `lua/plugins/dashboard.lua` to disable the default dashboard:
 
 ```lua
 return {
-  -- 1. Disable the default Snacks dashboard module
-  {
-    "folke/snacks.nvim",
-    opts = {
-      dashboard = { enabled = false },
-    },
-  },
-
-  -- 2. Load and configure foyer.nvim
-  {
-    "kevanoullio/foyer.nvim",
-    lazy = false, -- Load immediately on startup
-    priority = 1000, -- Initialize before other plugins
-    dependencies = { "nvim-tree/nvim-web-devicons" }, -- Optional: for menu icons
-    config = function()
-      require("foyer").setup({
-        -- Your custom setup configuration parameters
-      })
-    end,
+  "folke/snacks.nvim",
+  opts = {
+    dashboard = { enabled = false },
   },
 }
+```
 
+Create `lua/plugins/foyer.lua` to load and configure foyer:
+
+```lua
+return {
+  "kevanoullio/foyer.nvim",
+  lazy = false,
+  priority = 1000,
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+  config = function()
+    require("foyer").setup({
+      -- Your custom options here
+    })
+  end,
+}
 ```
 
 ### Option B: Standalone Neovim (No Distro)
 
-If you manage your configuration from scratch using a plugin manager like `lazy.nvim`, declare the plugin and ensure it is set to initialize on startup.
-
-Add this entry to your plugin specifications:
+If you manage your configuration from scratch using a plugin manager like `lazy.nvim`, declare the plugin and set it to initialize on startup:
 
 ```lua
 require("lazy").setup({
@@ -59,14 +57,14 @@ require("lazy").setup({
     "kevanoullio/foyer.nvim",
     lazy = false,
     priority = 1000,
+    dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
       require("foyer").setup({
-        -- Your custom setup configuration parameters
+        -- Your custom options here
       })
     end,
   },
 })
-
 ```
 
 ---
@@ -119,15 +117,13 @@ require("foyer").setup({
     },
     hl = "Title",
 
-    -- Position of art within the 25% header zone.
     position = {
-      row = "center",  -- "top" | "center" | "bottom"
-      col = "center",  -- "left" | "center" | "right"
+      row = "center",
+      col = "center",
     },
 
-    -- Header zone: ~25% of screen height.
     zone = {
-      percentage = 0.25,
+      percentage = 0.30,
       padding = { top = 2, bot = 2, left = 2, right = 2 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
@@ -144,13 +140,11 @@ require("foyer").setup({
       { icon = " ", key = "q", desc = "Quit",            action = ":qa" },
     },
 
-    -- Position of menu items within the 40% menu zone.
     position = {
-      row = "center",  -- "top" | "center" | "bottom"
-      col = "center",  -- "left" | "center" | "right"
+      row = "center",
+      col = "center",
     },
 
-    -- Menu zone: ~40% of screen height (largest = most flexibility).
     zone = {
       percentage = 0.40,
       padding = { top = 2, bot = 2, left = 2, right = 2 },
@@ -162,22 +156,65 @@ require("foyer").setup({
     hl_key = "Keyword",
   },
 
+  stats = {
+    show = {
+      plugins_loaded = true,
+      plugin_load_time = true,
+      folders = false,
+      files = false,
+    },
+    depth = 3,
+    max_entries = 5000,
+    batch_size = 50,
+    use_gitignore = true,
+    ignore_patterns = {},
+    skip_dirs = {
+      "node_modules", ".git", ".cache", "__pycache__",
+      ".venv", "vendor", ".next", "target", "build", "dist",
+    },
+    position = {
+      row = "center",
+      col = "center",
+    },
+    zone = {
+      percentage = 0.15,
+      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      margin = { top = 0, bot = 0, left = 0, right = 0 },
+    },
+    hl_text = "Comment",
+  },
+
   footer = {
     text = "Welcome back. Time to build.",
     hl = "Comment",
 
-    -- Position of text within the 10% footer zone.
     position = {
-      row = "center",  -- "top" | "center" | "bottom"
-      col = "center",  -- "left" | "center" | "right"
+      row = "center",
+      col = "center",
     },
 
-    -- Footer zone: ~10% of screen height.
     zone = {
-      percentage = 0.10,
+      percentage = 0.15,
       padding = { top = 2, bot = 2, left = 2, right = 2 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
+  },
+
+  -- Visual debug overlays (zone boundary drawing on the buffer).
+  -- Disabled by default. Set debug.enabled = true and debug.zones = true
+  -- to see colored zone borders.
+  debug = {
+    enabled = false,
+    zones = false,
+  },
+
+  -- File logging of computed zone measurements.
+  -- Set log.enabled = true and log.zones = true to log measurements
+  -- on every render cycle.
+  log = {
+    enabled = false,
+    zones = false,
+    file = "./foyer-debug.log",
   },
 })
 ```
@@ -189,9 +226,10 @@ Each layer is allocated a zone as a percentage of the usable screen height:
 | Layer | Default Zone | Description |
 |---|---|---|
 | `background` | `1.0` (100%) | Full usable screen |
-| `header` | `0.25` (25%) | Upper portion for logo/art |
-| `menu` | `0.40` (40%) | Largest zone for menu items |
-| `footer` | `0.10` (10%) | Bottom portion for status text |
+| `header` | `0.30` (30%) | Upper portion for logo/art |
+| `menu`  | `0.40` (40%) | Largest zone for menu items |
+| `stats` | `0.15` (15%) | Project/file statistics |
+| `footer` | `0.15` (15%) | Bottom portion for status text |
 
 When zone percentages total less than 1.0 (100%), the remaining space is evenly distributed as equal top and bottom **margin** to every zone.
 
@@ -207,57 +245,63 @@ All layers default to `"center"` for both axes.
 
 ## 🐛 Debugging
 
-foyer.nvim includes a built-in debug system for diagnosing layout issues such as misaligned content or layers that are not rendering. Inspired by `Snacks.debug`, it provides three levels of visibility.
+foyer.nvim provides two independent debug features for diagnosing layout issues:
+**visual zone overlays** (buffer highlights) and **file logging** (zone measurements
+to disk). Each has its own toggle, so you can use them separately or together.
 
-### Enabling Debug
-
-Set `debug.enabled = true` in your setup options:
+### Enabling Debug + Log
 
 ```lua
 require("foyer").setup({
+  -- Visual: draw colored zone boundaries on the buffer
   debug = {
     enabled = true,
-    log_file = "./foyer-debug.log",  -- optional, default is ./foyer-debug.log
+    zones = true,
+  },
+
+  -- File: log zone measurements on every render cycle
+  log = {
+    enabled = true,
+    zones = true,
+    file = "./foyer-debug.log",  -- optional, default shown
   },
 })
 ```
 
+| Feature | Requires | Effect |
+|---|---|---|
+| Visual overlays | `debug.enabled = true` + `debug.zones = true` | Colored borders on each zone |
+| File logging | `log.enabled = true` + `log.zones = true` | Zone measurements written to `log.file` |
+| Both | All four true | Overlays + logging on every render |
+
 ### 1. Visual Zone Overlays
 
-With debug enabled, colored horizontal lines are drawn on the buffer showing each zone's boundaries:
+Colored horizontal lines are drawn on the buffer showing each zone's boundaries:
 
 | Color | Layer |
 |---|---|
-| Red | `header` |
-| Green | `menu` |
-| Blue | `stats` |
-| Magenta | `footer` |
+| Peach | `header` |
+| Mint | `menu` |
+| Sky Blue | `stats` |
+| Lavender | `footer` |
 
-Each boundary line is labeled at the left margin with `name(h=<height>,r=<row>)`. This lets you visually confirm that zones are positioned where you expect relative to your terminal dimensions.
+Each boundary line is labeled at the left margin with `name(h=<height>,r=<row>)`.
+This lets you visually confirm zones are positioned where you expect.
 
-### 2. Debug Log File
+### 2. Zone Log File
 
-Every render writes the computed zones to `./foyer-debug.log` (path configurable via `debug.log_file`). Each entry is timestamped and contains a `vim.inspect` dump of the zone table:
+When `log.enabled` and `log.zones` are both true, every render appends zone
+measurements to the file. The format uses a timestamp header, one indented line
+per zone, and a separator between render cycles:
 
 ```
-2026-01-15 10:30:42  zones {
-  header = {
-    height = 25,
-    row = 1
-  },
-  menu = {
-    height = 40,
-    row = 29
-  },
-  stats = {
-    height = 15,
-    row = 71
-  },
-  footer = {
-    height = 10,
-    row = 88
-  }
-}
+2026-06-17 16:20:46
+  [header] row=1 h=6 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+  [menu] row=7 h=9 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+  [stats] row=16 h=3 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+  [footer] row=19 h=3 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+
+----------------------
 ```
 
 This is useful for tracking how zones change across terminal resizes or config edits.
@@ -271,12 +315,16 @@ Run `:FoyerDebug` to get a notification with a complete layout report:
 Canvas: 120x40
 Total zone pct: 0.90
 Debug enabled: true
+Debug zones: true
+Log enabled: true
+Log zones: true
+Log file: ./foyer-debug.log
 
 === Zone Configs ===
-header: pct=0.25 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+header: pct=0.30 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
 menu:   pct=0.40 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
 stats:  pct=0.15 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
-footer: pct=0.10 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+footer: pct=0.15 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
 
 === Computed Zones ===
 header: row=1 height=25 (row+height=26)
@@ -287,22 +335,22 @@ footer: row=88 height=10 (row+height=98)
 Next after footer: row 98 (canvas height: 98)
 ```
 
-The command also detects and reports overflow — if the total content extends past the canvas height, a warning is shown:
+The command also detects overflow and shows warnings:
 
 ```
 OVERFLOW: content extends 3 lines past canvas
 WARNING: footer zone extends 3 lines beyond canvas
 ```
 
-This helps when your zone percentages + padding push content beyond the available terminal rows.
-
 ### Debugging Common Issues
 
-**Header not centered:** Check that `zone.padding.left` is accounted for. The header now uses `pad.left` in its column offset calculation, matching menu/stats/footer.
+**Footer not visible:** Run `:FoyerDebug` and check for the overflow warning.
+If the footer zone extends past `canvas height`, its content is silently clipped.
+Reduce zone percentages or padding to fix.
 
-**Footer not visible:** Run `:FoyerDebug` and check for the overflow warning. If the footer zone extends past `canvas height`, its content is silently clipped by the canvas bounds check. Reduce zone percentages or padding to fix.
-
-**Content offset by a few columns:** Verify `zone.padding.left` values match across layers. A mismatch between the header's centering calculation and other layers causes horizontal drift.
+**Content offset by a few columns:** Verify `zone.padding.left` values match
+across layers. A mismatch between the header's centering and other layers causes
+horizontal drift.
 
 ---
 
@@ -331,12 +379,15 @@ foyer.nvim/
 │       └── lib/                -- Shared utilities
 │           ├── screen.lua      -- Usable terminal dimension calculation
 │           ├── align.lua       -- Row/column alignment helpers
-│           └── debug.lua       -- Debug logging & visual zone overlays
+│           ├── log.lua         -- Pure file I/O for zone measurement logging
+│           └── debug.lua       -- Visual zone boundary overlays on the buffer
 ```
 
 All layers use the centralized `align` module for consistent horizontal and vertical positioning, and `screen.usable()` for accurate viewport dimensions that account for vim's reserved UI space (statusline, cmdheight, tabline).
 
-When `debug.enabled` is set, `debug.log()` writes timestamped render state to a file and `debug.draw_zones()` overlays colored boundary lines on the buffer for visual layout inspection.
+Debug features are independently toggled:
+- `debug.enabled + debug.zones` draws colored zone boundary overlays via `debug.draw_zones()`
+- `log.enabled + log.zones` writes zone measurements to a log file via `log.log()` / `log.sep()`
 
 ## 📄 License
 

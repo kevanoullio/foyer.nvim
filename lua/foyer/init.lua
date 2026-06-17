@@ -170,7 +170,13 @@ M.config = {
 
   debug = {
     enabled = false,
-    log_file = "./foyer-debug.log",
+    zones = false,
+  },
+
+  log = {
+    enabled = false,
+    zones = false,
+    file = "./foyer-debug.log",
   },
 }
 
@@ -208,6 +214,10 @@ function M.setup(opts)
         config.header.zone.percentage + config.menu.zone.percentage +
         config.stats.zone.percentage + config.footer.zone.percentage),
       string.format("Debug enabled: %s", tostring(config.debug.enabled)),
+      string.format("Debug zones: %s", tostring(config.debug.zones)),
+      string.format("Log enabled: %s", tostring(config.log.enabled)),
+      string.format("Log zones: %s", tostring(config.log.zones)),
+      string.format("Log file: %s", tostring(config.log.file)),
       "",
       "=== Zone Configs ===",
     }
