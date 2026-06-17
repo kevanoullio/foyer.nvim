@@ -108,7 +108,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
         while true do
           entry = vim.uv.fs_scandir_next(handle)
           if not entry then break end
-          local child_path = vim.fn.joinpath(dir, entry)
+          local child_path = vim.fs.joinpath(dir, entry)
           local stat = vim.uv.fs_stat(child_path)
           if stat and stat.type == "directory" then
             local child_hidden = in_hidden or (entry:sub(1, 1) == ".")
