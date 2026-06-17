@@ -1,10 +1,11 @@
 local M = {}
+local align = require("foyer.lib.align")
 
-function M.render(canvas, width, start_row)
+function M.render(canvas, width, _, zone)
   local config = require("foyer").config.menu
   local interactive_lines = {}
 
-  if not config.items or #config.items == 0 then return start_row, {} end
+  if not config.items or #config.items == 0 then return zone.row, {} end
 
   -- Measure column widths across all items
   local max_icon_w = 0
@@ -22,18 +23,31 @@ function M.render(canvas, width, start_row)
     table.insert(prepared, { icon = icon, desc = desc, key_display = key_display, raw = item })
   end
 
-  -- Center the icon/desc/key block horizontally
-  local icon_gap = 2
-  local key_gap = 2
-  local block_width = max_icon_w + icon_gap + max_desc_w + key_gap + max_key_w
-  local start_col = math.max(1, math.floor((width - block_width) / 2))
+  -- Apply zone padding
+  local pad = config.zone.padding
+  local inner_top = zone.row + pad.top
+  local inner_height = math.max(1, zone.height - pad.top - pad.bot)
+
+  -- Compute vertical position within the padded zone
+  local menu_height = #prepared * 2
+  local menu_row
+  if inner_height > menu_height then
+    menu_row = inner_top + align.row(inner_height, menu_height, config.position.row or "center")
+  else
+    menu_row = inner_top
+  end
+
+  -- Compute horizontal position within the padded zone
+  local block_width = max_icon_w + 2 + max_desc_w + 2 + max_key_w
+  local col_offset = align.col(width, block_width, "center")
+  local start_col = 1 + pad.left + col_offset
 
   for idx, item in ipairs(prepared) do
-    local row = start_row + (idx - 1) * 2
+    local row = menu_row + (idx - 1) * 2
 
     local icon_col = start_col
-    local desc_col = start_col + max_icon_w + icon_gap
-    local key_col = start_col + max_icon_w + icon_gap + max_desc_w + key_gap
+    local desc_col = start_col + max_icon_w + 2
+    local key_col = start_col + max_icon_w + 2 + max_desc_w + 2
 
     -- Right-align key within its column (handles variable-width keys)
     key_col = key_col + (max_key_w - #item.key_display)
@@ -50,7 +64,7 @@ function M.render(canvas, width, start_row)
     })
   end
 
-  return start_row + (#prepared * 2), interactive_lines
+  return menu_row + (#prepared * 2), interactive_lines
 end
 
 return M
