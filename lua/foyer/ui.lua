@@ -180,14 +180,14 @@ function M.render()
   -- Push contents from canvas matrix memory onto Neovim screen
   local text_lines, highlights = canvas:flush()
 
+  vim.bo[M.bufnr].modifiable = true
+  vim.api.nvim_buf_set_lines(M.bufnr, 0, -1, false, text_lines)
+  vim.bo[M.bufnr].modifiable = false
+
   -- Debug: draw zone boundaries on the buffer when enabled
   if config.debug and config.debug.enabled then
     require("foyer.lib.debug").draw_zones(M.bufnr, content_zones, usable.width)
   end
-
-  vim.bo[M.bufnr].modifiable = true
-  vim.api.nvim_buf_set_lines(M.bufnr, 0, -1, false, text_lines)
-  vim.bo[M.bufnr].modifiable = false
 
   -- Clean old highlights and write down new layer colors
   local ns = vim.api.nvim_create_namespace("foyer_highlights")

@@ -49,19 +49,44 @@ function M.draw_zones(bufnr, zones, width)
     })
   end
 
+  -- Clamp row to buffer bounds (zone.row is 1-indexed, extmark is 0-indexed)
+  local buf_line_count = vim.api.nvim_buf_line_count(bufnr)
+  if buf_line_count == 0 then return end
+
+  local function clamp_row(row)
+    -- row is 1-indexed from zone computation; extmark expects 0-indexed
+    local extmark_row = row - 1
+    return math.max(0, math.min(extmark_row, buf_line_count - 1))
+  end
+
   for _, name in ipairs({ "header", "menu", "stats", "footer" }) do
     local zone = zones[name]
     local c = colors[name]
     if not zone or not c then return end
 
-    -- Top border line
-    vim.api.nvim_buf_add_highlight(bufnr, ns, highlight_base .. name, zone.row, 0, width)
+    -- Top border line via extmark highlight
+    local top = clamp_row(zone.row)
+    if top >= 0 then
+      vim.api.nvim_buf_set_extmark(bufnr, ns, top, 0, {
+        end_col = width,
+        hl_group = highlight_base .. name,
+        hl_eol = true,
+      })
+    end
+
     -- Bottom border line
-    local bot_row = zone.row + zone.height - 1
-    vim.api.nvim_buf_add_highlight(bufnr, ns, highlight_base .. name, bot_row, 0, width)
+    local bot = clamp_row(zone.row + zone.height - 1)
+    if bot >= 0 and bot <= top then
+      vim.api.nvim_buf_set_extmark(bufnr, ns, bot, 0, {
+        end_col = width,
+        hl_group = highlight_base .. name,
+        hl_eol = true,
+      })
+    end
+
     -- Label at left margin
     local label = string.format("%s(h=%d,r=%d)", name, zone.height, zone.row)
-    vim.api.nvim_buf_set_extmark(bufnr, ns, zone.row, 0, {
+    vim.api.nvim_buf_set_extmark(bufnr, ns, top, 0, {
       virt_text = { { label, highlight_base .. name } },
     })
   end
