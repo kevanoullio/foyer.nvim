@@ -174,11 +174,6 @@ function M.render()
     log.sep(config.log.file)
   end
 
-  -- Draw zone boundary overlays on the buffer
-  if config.debug and config.debug.enabled and config.debug.zones then
-    require("foyer.lib.debug").draw_zones(M.bufnr, content_zones, usable.width, config)
-  end
-
   -- Create a fresh empty virtual canvas
   local canvas = Canvas.new(usable.width, usable.height)
 
@@ -205,6 +200,11 @@ function M.render()
   vim.bo[M.bufnr].modifiable = true
   vim.api.nvim_buf_set_lines(M.bufnr, 0, -1, false, text_lines)
   vim.bo[M.bufnr].modifiable = false
+
+  -- Draw zone boundary overlays on the buffer
+  if config.debug and config.debug.enabled and config.debug.zones then
+    require("foyer.lib.debug").draw_zones(M.bufnr, content_zones, usable.width, config)
+  end
 
   -- Clean old highlights and write down new layer colors
   local ns = vim.api.nvim_create_namespace("foyer_highlights")
