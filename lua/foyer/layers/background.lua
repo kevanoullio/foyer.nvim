@@ -1,4 +1,5 @@
 local M = {}
+local align = require("foyer.lib.align")
 local loader = require("foyer.loader")
 local generators = require("foyer.generators")
 
@@ -29,8 +30,10 @@ function M.render(canvas, width, height)
     end
   end
 
-  start_row = math.max(1, math.floor((height - art_height) / 2))
-  start_col = math.max(1, math.floor((width - art_width) / 2))
+  -- Compute centered position using alignment helpers
+  local pos = align.position(height, width, art_height, art_width, "center", "center")
+  start_row = math.max(1, 1 + pos.row)
+  start_col = math.max(1, 1 + pos.col)
 
   canvas:blend(bg_lines, start_row, start_col, false, config.hl)
 end

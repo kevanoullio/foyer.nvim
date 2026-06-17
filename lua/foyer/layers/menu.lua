@@ -1,6 +1,7 @@
 local M = {}
+local align = require("foyer.lib.align")
 
-function M.render(canvas, width, start_row)
+function M.render(canvas, width, height, start_row)
   local config = require("foyer").config.menu
   local interactive_lines = {}
 
@@ -22,11 +23,12 @@ function M.render(canvas, width, start_row)
     table.insert(prepared, { icon = icon, desc = desc, key_display = key_display, raw = item })
   end
 
-  -- Center the icon/desc/key block horizontally
+  -- Calculate horizontal centering offset
   local icon_gap = 2
   local key_gap = 2
   local block_width = max_icon_w + icon_gap + max_desc_w + key_gap + max_key_w
-  local start_col = math.max(1, math.floor((width - block_width) / 2))
+  local col_offset = align.col(width, block_width, "center")
+  local start_col = math.max(1, 1 + col_offset)
 
   for idx, item in ipairs(prepared) do
     local row = start_row + (idx - 1) * 2

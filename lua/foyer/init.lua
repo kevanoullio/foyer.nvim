@@ -38,6 +38,7 @@ M.config = {
       { icon = "󰒲 ", key = "l", desc = "Lazy",            action = ":Lazy" },
       { icon = " ", key = "q", desc = "Quit",            action = ":qa" },
     },
+    row_align = "center",
     hl_icon = "Special",
     hl_desc = "Normal",
     hl_key = "Keyword",

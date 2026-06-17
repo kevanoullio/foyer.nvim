@@ -42,8 +42,11 @@ end
 function M.render()
   if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then return end
 
-  local width = vim.api.nvim_win_get_width(0)
-  local height = vim.api.nvim_win_get_height(0)
+  -- Get usable terminal dimensions (accounts for cmdheight and statusline)
+  local screen = require("foyer.lib.screen")
+  local usable = screen.usable()
+  local width = usable.width
+  local height = usable.height
 
   -- Create a fresh empty virtual canvas
   local canvas = Canvas.new(width, height)
@@ -52,17 +55,30 @@ function M.render()
   require("foyer.layers.background").render(canvas, width, height)
 
   -- Step 2: Render foreground components sequentially using composition math (Transparent)
-  local current_row = math.floor(height * 0.15)
+  local config = require("foyer").config
+  local align = require("foyer.lib.align")
 
-  -- Header
-  current_row = require("foyer.layers.header").render(canvas, width, current_row) + 3
+  -- Header: vertically centered in upper portion of screen
+  local header_height = #config.header.art
+  local header_row = math.max(1, math.floor((height - header_height) / 3))
+  local current_row = require("foyer.layers.header").render(canvas, width, header_row) + 3
 
-  -- Menu
+  -- Menu: vertically positioned within remaining space with configurable alignment
+  local menu_items = config.menu.items
+  local menu_height = menu_items and (#menu_items * 2) or 0
+  local remaining_space = height - current_row
+  local menu_row_offset = remaining_space > menu_height
+    and align.row(remaining_space, menu_height, config.menu.row_align or "center")
+    or 0
+  local menu_row = math.max(1, current_row + menu_row_offset)
   local interactive_lines
-  current_row, interactive_lines = require("foyer.layers.menu").render(canvas, width, current_row)
 
-  -- Footer
-  require("foyer.layers.footer").render(canvas, width, height - 2)
+  -- Footer: positioned at bottom of screen
+  local footer_row = math.max(1, height - 1)
+
+  -- Render menu and footer
+  current_row, interactive_lines = require("foyer.layers.menu").render(canvas, width, height, menu_row)
+  require("foyer.layers.footer").render(canvas, width, height, footer_row)
 
   -- Push contents from canvas matrix memory onto Neovim screen
   local text_lines, highlights = canvas:flush()
