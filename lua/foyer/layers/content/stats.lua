@@ -127,22 +127,22 @@ function M.render(canvas, width, _, zone, config, bufnr)
       local current
       local handle
 
-      local function done()
+      local done, finalize, flush_and_process, process_next_batch, scan_next_dir
+
+      done = function()
         cb(result.f, result.hf, result.fi, result.hi)
       end
 
-      local function finalize(collected, dir_done)
+      finalize = function(collected, dir_done)
         for _, item in ipairs(collected) do
           if skip[item.name] then goto skip end
 
           local child_path = vim.fs.joinpath(current.path, item.name)
           local stat = vim.uv.fs_stat(child_path)
 
-          -- Check gitignore (is_dir known after stat)
           if ignore_checker and ignore_checker.is_ignored(item.relpath, item.name, stat and stat.type == "directory") then
             goto skip end
 
-          -- Check user patterns against relative path
           for _, pat in ipairs(ignore_patterns) do
             if item.relpath:match(pat) then goto skip end
           end
@@ -168,7 +168,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
         else vim.defer_fn(process_next_batch, 1) end
       end
 
-      local function flush_and_process(collected, dir_done)
+      flush_and_process = function(collected, dir_done)
         if #collected == 0 then
           if dir_done then vim.defer_fn(scan_next_dir, 1)
           else vim.defer_fn(process_next_batch, 1) end
@@ -185,7 +185,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
         end
       end
 
-      local function process_next_batch()
+      process_next_batch = function()
         local collected = {}
         for _ = 1, batch do
           local entry = vim.uv.fs_scandir_next(handle)
@@ -202,7 +202,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
         flush_and_process(collected, false)
       end
 
-      local function scan_next_dir()
+      scan_next_dir = function()
         if total >= max_entries or #dirs == 0 then return done() end
 
         current = table.remove(dirs, 1)

@@ -15,10 +15,11 @@ function M.render(canvas, width, _, zone)
   local pad = config.zone.padding
   local inner_height = math.max(1, zone.height - pad.top - pad.bot)
 
-  -- Measure longest line to determine content width
+  -- Measure longest line by visual character count (not byte length)
   local max_len = 0
   for _, line in ipairs(config.art) do
-    if #line > max_len then max_len = #line end
+    local chars = vim.fn.strchars(line)
+    if chars > max_len then max_len = chars end
   end
 
   -- Compute position within padded zone using configured alignment

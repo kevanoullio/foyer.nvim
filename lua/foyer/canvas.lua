@@ -30,11 +30,10 @@ function Canvas:blend(lines, start_row, start_col, transparent, hl_group)
     local target_r = start_row + r_offset - 1
     if target_r > self.height then break end
 
-    -- Convert string line to characters handling UTF-8 safely if possible
-    -- Simplification: iterate via byte sequences or subchars
     for c_offset = 1, #line do
       local target_c = start_col + c_offset - 1
       if target_c > self.width then break end
+      if target_c < 1 then goto skip end
 
       local char = line:sub(c_offset, c_offset)
 
@@ -43,14 +42,18 @@ function Canvas:blend(lines, start_row, start_col, transparent, hl_group)
           self.grid[target_r][target_c] = char
         end
       end
+
+      ::skip::
     end
 
     -- Save highlights bound to this row segment
     if hl_group and self.grid[target_r] then
+      local byte_len = #line
+      local actual_start = math.max(start_col, 1)
       table.insert(self.highlights, {
-        row = target_r - 1, -- Neovim API relies on 0-indexed rows
-        start_col = start_col - 1,
-        end_col = start_col + #line - 1,
+        row = target_r - 1,
+        start_col = actual_start - 1,
+        end_col = math.min(actual_start + byte_len, self.width + 1) - 1,
         hl_group = hl_group,
       })
     end

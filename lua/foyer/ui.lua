@@ -89,7 +89,7 @@ local function compute_content_zones(usable, config)
       row = current_row + layer.zone.margin.top,
       height = zone_height,
     }
-    current_row = current_row + zone_height + layer.zone.padding.bot
+      current_row = current_row + zone_height
   end
 
   return zones
