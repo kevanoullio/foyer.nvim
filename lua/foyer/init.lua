@@ -16,7 +16,17 @@ M.config = {
     path = nil,
     theme = "stars",
     hl = "Comment",
+    position = {
+      row = "center",
+      col = "center",
+    },
+    zone = {
+      percentage = 1.0,
+      padding = { top = 0, bot = 0, left = 0, right = 0 },
+      margin = { top = 0, bot = 0, left = 0, right = 0 },
+    },
   },
+
   header = {
     art = {
       " ██╗      █████╗ ███████╗██╗   ██╗██╗   ██╗██╗███╗   ███╗          Z ",
@@ -27,52 +37,89 @@ M.config = {
       " ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝     ╚═══╝  ╚═╝╚═╝     ╚═╝            ",
     },
     hl = "Title",
+    position = {
+      row = "center",
+      col = "center",
+    },
+    zone = {
+      percentage = 0.25,
+      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      margin = { top = 0, bot = 0, left = 0, right = 0 },
+    },
   },
+
   menu = {
     items = {
-      { icon = " ", key = "f", desc = "Find File",       action = function() M.pick("files") end },
-      { icon = " ", key = "n", desc = "New File",        action = ":ene | startinsert" },
-      { icon = " ", key = "g", desc = "Find Text",       action = function() M.pick("live_grep") end },
-      { icon = " ", key = "r", desc = "Recent Files",    action = function() M.pick("oldfiles") end },
-      { icon = " ", key = "c", desc = "Config",          action = ":e $MYVIMRC" },
-      { icon = "󰒲 ", key = "l", desc = "Lazy",            action = ":Lazy" },
-      { icon = " ", key = "q", desc = "Quit",            action = ":qa" },
+      { icon = " ", key = "f", desc = "Find File", action = function() M.pick("files") end },
+      { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
+      { icon = " ", key = "g", desc = "Find Text", action = function() M.pick("live_grep") end },
+      { icon = " ", key = "r", desc = "Recent Files", action = function() M.pick("oldfiles") end },
+      { icon = " ", key = "c", desc = "Config", action = ":e $MYVIMRC" },
+      { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy" },
+      { icon = " ", key = "q", desc = "Quit", action = ":qa" },
     },
-    row_align = "center",
+    position = {
+      row = "center",
+      col = "center",
+    },
+    zone = {
+      percentage = 0.50,
+      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      margin = { top = 0, bot = 0, left = 0, right = 0 },
+    },
     hl_icon = "Special",
     hl_desc = "Normal",
     hl_key = "Keyword",
   },
+
   footer = {
     text = "Welcome back. Time to build.",
     hl = "Comment",
+    position = {
+      row = "center",
+      col = "center",
+    },
+    zone = {
+      percentage = 0.25,
+      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      margin = { top = 0, bot = 0, left = 0, right = 0 },
+    },
   },
 }
 
 function M.pick(cmd)
   local ok_snacks, snacks = pcall(require, "snacks")
   if ok_snacks and snacks.picker then
-    if cmd == "files" then snacks.picker.files()
-    elseif cmd == "live_grep" then snacks.picker.grep()
-    elseif cmd == "oldfiles" then snacks.picker.recent()
+    if cmd == "files" then
+      snacks.picker.files()
+    elseif cmd == "live_grep" then
+      snacks.picker.grep()
+    elseif cmd == "oldfiles" then
+      snacks.picker.recent()
     end
     return
   end
 
   local ok_telescope, builtin = pcall(require, "telescope.builtin")
   if ok_telescope then
-    if cmd == "files" then builtin.find_files()
-    elseif cmd == "live_grep" then builtin.live_grep()
-    elseif cmd == "oldfiles" then builtin.oldfiles()
+    if cmd == "files" then
+      builtin.find_files()
+    elseif cmd == "live_grep" then
+      builtin.live_grep()
+    elseif cmd == "oldfiles" then
+      builtin.oldfiles()
     end
     return
   end
 
   local ok_fzf, fzf = pcall(require, "fzf-lua")
   if ok_fzf then
-    if cmd == "files" then fzf.files()
-    elseif cmd == "live_grep" then fzf.live_grep()
-    elseif cmd == "oldfiles" then fzf.oldfiles()
+    if cmd == "files" then
+      fzf.files()
+    elseif cmd == "live_grep" then
+      fzf.live_grep()
+    elseif cmd == "oldfiles" then
+      fzf.oldfiles()
     end
   end
 end

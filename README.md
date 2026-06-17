@@ -9,7 +9,7 @@
 * **Isolated Interactivity:** Robust cursor-locking mechanics that restrict navigation strictly to active menu lines.
 * **Three Background Modes:** Static file (centered .txt), procedural generation (theme-based), or blank.
 * **Pluggable Generators:** Drop-in Lua modules under `lua/foyer/generators/` for custom background themes.
-* **Configurable Menu Alignment:** Position the menu vertically within its allocated space (`"top"`, `"center"`, or `"bottom"`).
+* **Configurable Zone Layout:** Each layer has a dedicated screen area defined as a percentage, with independent row/col alignment (`"top"`/`"center"`/`"bottom"`, `"left"`/`"center"`/`"right"`).
 * **Precise Screen Sizing:** Accurately calculates usable terminal dimensions, accounting for `cmdheight`, statusline, and tabline.
 
 ---
@@ -93,6 +93,19 @@ require("foyer").setup({
 
     -- Highlight group applied to every background cell.
     hl = "Comment",
+
+    -- Position of content within the allocated zone.
+    position = {
+      row = "center",  -- "top" | "center" | "bottom"
+      col = "center",  -- "left" | "center" | "right"
+    },
+
+    -- Zone definition: percentage of screen height and spacing.
+    zone = {
+      percentage = 1.0,  -- 1.0 = full usable screen height
+      padding = { top = 0, bot = 0, left = 0, right = 0 },  -- inner spacing
+      margin = { top = 0, bot = 0, left = 0, right = 0 },   -- outer spacing
+    },
   },
 
   header = {
@@ -105,6 +118,19 @@ require("foyer").setup({
       " ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝     ╚═══╝  ╚═╝╚═╝     ╚═╝            ",
     },
     hl = "Title",
+
+    -- Position of art within the 25% header zone.
+    position = {
+      row = "center",  -- "top" | "center" | "bottom"
+      col = "center",  -- "left" | "center" | "right"
+    },
+
+    -- Header zone: ~25% of screen height.
+    zone = {
+      percentage = 0.25,
+      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      margin = { top = 0, bot = 0, left = 0, right = 0 },
+    },
   },
 
   menu = {
@@ -117,11 +143,20 @@ require("foyer").setup({
       { icon = "󰒲 ", key = "l", desc = "Lazy",            action = ":Lazy" },
       { icon = " ", key = "q", desc = "Quit",            action = ":qa" },
     },
-    -- Vertical alignment of the menu within its allocated space (after the header).
-    -- "top"   = Menu immediately below the header (default gap preserved).
-    -- "center" = Menu centered in the remaining space.
-    -- "bottom" = Menu pushed to the bottom of the available area.
-    row_align = "center",
+
+    -- Position of menu items within the 40% menu zone.
+    position = {
+      row = "center",  -- "top" | "center" | "bottom"
+      col = "center",  -- "left" | "center" | "right"
+    },
+
+    -- Menu zone: ~40% of screen height (largest = most flexibility).
+    zone = {
+      percentage = 0.40,
+      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      margin = { top = 0, bot = 0, left = 0, right = 0 },
+    },
+
     hl_icon = "Special",
     hl_desc = "Normal",
     hl_key = "Keyword",
@@ -130,9 +165,43 @@ require("foyer").setup({
   footer = {
     text = "Welcome back. Time to build.",
     hl = "Comment",
+
+    -- Position of text within the 10% footer zone.
+    position = {
+      row = "center",  -- "top" | "center" | "bottom"
+      col = "center",  -- "left" | "center" | "right"
+    },
+
+    -- Footer zone: ~10% of screen height.
+    zone = {
+      percentage = 0.10,
+      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      margin = { top = 0, bot = 0, left = 0, right = 0 },
+    },
   },
 })
 ```
+
+### Zone Layout
+
+Each layer is allocated a zone as a percentage of the usable screen height:
+
+| Layer | Default Zone | Description |
+|---|---|---|
+| `background` | `1.0` (100%) | Full usable screen |
+| `header` | `0.25` (25%) | Upper portion for logo/art |
+| `menu` | `0.40` (40%) | Largest zone for menu items |
+| `footer` | `0.10` (10%) | Bottom portion for status text |
+
+When zone percentages total less than 1.0 (100%), the remaining space is evenly distributed as equal top and bottom **margin** to every zone.
+
+**Padding** (`zone.padding`) is inner spacing — the gap between the zone boundary and where content begins. **Margin** (`zone.margin`) is outer spacing — the gap outside the zone. This follows the same model as CSS.
+
+Each layer also has a `position` object with `row` and `col` options:
+- `row`: `"top"`, `"center"`, or `"bottom"` — vertical alignment within the padded zone
+- `col`: `"left"`, `"center"`, or `"right"` — horizontal alignment within the padded zone
+
+All layers default to `"center"` for both axes.
 
 ---
 

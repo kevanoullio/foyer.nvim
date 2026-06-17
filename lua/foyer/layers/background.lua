@@ -3,10 +3,9 @@ local align = require("foyer.lib.align")
 local loader = require("foyer.loader")
 local generators = require("foyer.generators")
 
-function M.render(canvas, width, height)
+function M.render(canvas, width, height, zone)
   local config = require("foyer").config.background
   local bg_lines
-  local start_row, start_col
 
   if config.type == "file" then
     bg_lines = loader.read_lines(config.path)
@@ -30,10 +29,11 @@ function M.render(canvas, width, height)
     end
   end
 
-  -- Compute centered position using alignment helpers
-  local pos = align.position(height, width, art_height, art_width, "center", "center")
-  start_row = math.max(1, 1 + pos.row)
-  start_col = math.max(1, 1 + pos.col)
+  -- Compute centered position within zone using configured alignment
+  local pos = align.position(zone.height, width, art_height, art_width,
+    config.position.row or "center", config.position.col or "center")
+  local start_row = zone.row + pos.row
+  local start_col = 1 + pos.col
 
   canvas:blend(bg_lines, start_row, start_col, false, config.hl)
 end
