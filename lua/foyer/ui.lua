@@ -54,6 +54,7 @@ local function compute_zones(usable, config)
     { key = "background", zone = config.background.zone },
     { key = "header", zone = config.header.zone },
     { key = "menu", zone = config.menu.zone },
+    { key = "stats", zone = config.stats.zone },
     { key = "footer", zone = config.footer.zone },
   }
 
@@ -155,6 +156,10 @@ function M.render()
   local interactive_lines
   local menu_result = require("foyer.layers.menu").render(canvas, usable.width, usable.height, zones.menu)
   interactive_lines = menu_result[2] or {}
+
+  -- Step 3.5: Render stats layer
+  local stats_config = require("foyer").config.stats
+  require("foyer.layers.stats").render(canvas, usable.width, usable.height, zones.stats, stats_config, M.bufnr)
 
   -- Step 4: Render footer layer
   require("foyer.layers.footer").render(canvas, usable.width, usable.height, zones.footer)
