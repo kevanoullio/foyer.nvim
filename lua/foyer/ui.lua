@@ -46,9 +46,9 @@ end
 --- Zones are allocated sequentially from top to bottom. Remaining space is
 --- distributed as equal top/bottom margin to each zone.
 ---
---- @param usable {width: number, height: number}
---- @param config table
---- @return {background: {row: number, height: number}, header: {row: number, height: number}, menu: {row: number, height: number}, footer: {row: number, height: number}}
+---@param usable {width: number, height: number}
+---@param config {background: table, header: table, menu: table, stats: table, footer: table}
+---@return {background: {row: number, height: number}, header: {row: number, height: number}, menu: {row: number, height: number}, stats: {row: number, height: number}, footer: {row: number, height: number}}
 local function compute_zones(usable, config)
   local layers = {
     { key = "background", zone = config.background.zone },
@@ -96,6 +96,9 @@ local function compute_zones(usable, config)
   return zones
 end
 
+--- Opens the Foyer dashboard in a new scratch buffer or switches to an existing one.
+--- Creates the buffer, configures window options, triggers render, and sets up
+--- dynamic resizing on VimResized.
 function M.open()
   if M.bufnr and vim.api.nvim_buf_is_valid(M.bufnr) then
     vim.api.nvim_set_current_buf(M.bufnr)
@@ -132,6 +135,9 @@ function M.open()
   })
 end
 
+--- Renders all dashboard layers onto the canvas and pushes them to the buffer.
+--- Clears previous highlights, then applies new ones from the flush output.
+--- Finally attaches interactive navigation to the menu rows.
 function M.render()
   if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then return end
 
