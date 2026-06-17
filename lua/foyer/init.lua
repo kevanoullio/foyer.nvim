@@ -280,7 +280,7 @@ function M.setup(opts)
         row = current_row + layer.zone.margin.top,
         height = zone_height,
       }
-      current_row = current_row + zone_height + layer.zone.padding.bot
+      current_row = current_row + zone_height
     end
 
     lines[#lines + 1] = ""
@@ -303,7 +303,7 @@ function M.setup(opts)
         footer.row + footer.height - usable.height)
     end
 
-    vim.notify(lines, vim.log.levels.INFO, { title = "Foyer Debug" })
+    vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO, { title = "Foyer Debug" })
   end, { desc = "Debug Foyer dashboard layout" })
 end
 
