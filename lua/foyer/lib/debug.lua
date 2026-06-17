@@ -1,22 +1,7 @@
 local M = {}
-local _log_file = "./foyer-debug.log"
 
 ---@alias FoyerDebugZone {row: number, height: number}
 ---@alias FoyerDebugZones table<string, FoyerDebugZone>
-
---- Append timestamped message to the debug log file.
----@param ... any
-function M.log(...)
-  local fd = io.open(_log_file, "a+")
-  if not fd then return end
-  local parts = { os.date("%Y-%m-%d %H:%M:%S") }
-  for i = 1, select("#", ...) do
-    local v = select(i, ...)
-    parts[#parts + 1] = type(v) == "string" and v or vim.inspect(v)
-  end
-  fd:write(table.concat(parts, "  ") .. "\n")
-  fd:close()
-end
 
 --- Pastel highlight groups for zone visualisation.
 --- Margin (shared), padding (shared), and four zone-specific border colours.
