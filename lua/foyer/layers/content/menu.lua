@@ -1,6 +1,13 @@
 local M = {}
 local align = require("foyer.lib.align")
 
+--- Renders the menu items within their content zone and returns interactive
+--- rows for cursor navigation and keyboard bindings.
+---@param canvas table Canvas instance
+---@param width number Canvas width
+---@param _ number Unused canvas height
+---@param zone {row: number, height: number} Content zone bounds
+---@return number, {row: number, col: number, key?: string, action: string|function}[] Final row after menu, and interactive line definitions
 function M.render(canvas, width, _, zone)
   local config = require("foyer").config.menu
   local interactive_lines = {}

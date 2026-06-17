@@ -3,7 +3,12 @@ local align = require("foyer.lib.align")
 local loader = require("foyer.loader")
 local generators = require("foyer.generators")
 
-function M.render(canvas, width, height, zone)
+--- Renders the background backdrop onto the canvas, either from a file or
+--- procedurally generated art. Centers the art on the full canvas.
+---@param canvas table Canvas instance
+---@param width number Canvas width
+---@param height number Canvas height
+function M.render(canvas, width, height)
   local config = require("foyer").config.background
   local bg_lines
 
@@ -29,10 +34,10 @@ function M.render(canvas, width, height, zone)
     end
   end
 
-  -- Compute centered position within zone using configured alignment
-  local pos = align.position(zone.height, width, art_height, art_width,
+  -- Compute centered position on the full canvas
+  local pos = align.position(height, width, art_height, art_width,
     config.position.row or "center", config.position.col or "center")
-  local start_row = zone.row + pos.row
+  local start_row = 1 + pos.row
   local start_col = 1 + pos.col
 
   canvas:blend(bg_lines, start_row, start_col, false, config.hl)

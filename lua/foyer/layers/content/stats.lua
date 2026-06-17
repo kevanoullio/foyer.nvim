@@ -9,7 +9,17 @@ local function fmt_num(n)
   return s
 end
 
-function M.render(canvas, width, height, zone, config, bufnr)
+--- Renders plugin and filesystem stats within the stats content zone.
+--- Plugin stats are rendered synchronously; filesystem stats are computed
+--- asynchronously and call M.update when complete.
+---@param canvas table Canvas instance
+---@param width number Canvas width
+---@param _ number Unused canvas height
+---@param zone {row: number, height: number} Content zone bounds
+---@param config table Stats layer config (show, path, depth, etc.)
+---@param bufnr number Buffer handle for async updates
+---@return number, {} Content row and empty interaction table
+function M.render(canvas, width, _, zone, config, bufnr)
   local show = config.show
   if not show then return zone.row, {} end
 
@@ -124,6 +134,16 @@ function M.render(canvas, width, height, zone, config, bufnr)
   return content_row, {}
 end
 
+--- Updates the buffer with computed filesystem stats, replacing the
+--- "computing..." placeholder line.
+---@param bufnr number Buffer handle
+---@param fs_row number 1-indexed row in the buffer to update
+---@param folders number Folder count
+---@param hidden_folders number Hidden folder count
+---@param files number File count
+---@param hidden_files number Hidden file count
+---@param config table Stats layer config (show flags)
+---@param hl string Highlight group
 function M.update(bufnr, fs_row, folders, hidden_folders, files, hidden_files, config, hl)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
