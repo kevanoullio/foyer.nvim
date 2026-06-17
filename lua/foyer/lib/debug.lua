@@ -1,16 +1,11 @@
 local M = {}
 local _log_file = "./foyer-debug.log"
 
---- Debug module for foyer.nvim.
---- Provides logging and visual zone boundary helpers for diagnosing layout issues.
----
---- @alias FoyerDebugZone {row: number, height: number}
---- @alias FoyerDebugZones table<string, FoyerDebugZone>
+---@alias FoyerDebugZone {row: number, height: number}
+---@alias FoyerDebugZones table<string, FoyerDebugZone>
 
 --- Append timestamped message to the debug log file.
---- Accepts multiple arguments and pretty prints non-strings using vim.inspect.
----
---- @param ... any Values to log (strings are written as-is, others are inspected)
+---@param ... any
 function M.log(...)
   local fd = io.open(_log_file, "a+")
   if not fd then return end
@@ -23,71 +18,105 @@ function M.log(...)
   fd:close()
 end
 
---- Render zone boundaries as colored extmarks on the buffer.
---- This gives a visual overlay so you can see exactly where each zone
---- starts/ends relative to where content is actually placed.
+--- Pastel highlight groups for zone vizualisation.
+--- Margin and padding are shared across all zones; each zone gets its own
+--- distinct pastel border colour.
+local HL = {
+  margin  = { bg = "#E8E8E8", name = "FoyerDebugMargin" },
+  padding = { bg = "#FFFACD", name = "FoyerDebugPadding" },
+  zones   = {
+    header = { bg = "#FFC8A2", name = "FoyerDebugHeader" },
+    menu   = { bg = "#A8E6CF", name = "FoyerDebugMenu" },
+    stats  = { bg = "#A0D2F4", name = "FoyerDebugStats" },
+    footer = { bg = "#D7BDE2", name = "FoyerDebugFooter" },
+  },
+}
+
+--- Render the full zone extent (margin → padding → content) as coloured
+--- extmarks on the buffer. Each row in a zone is painted with the appropriate
+--- highlight group based on whether it falls in the margin, padding, or
+--- content band.
 ---
---- @param bufnr number Buffer handle
---- @param zones FoyerDebugZones All computed zones keyed by layer name
---- @param width number Canvas width in columns
-function M.draw_zones(bufnr, zones, width)
+---@param bufnr number
+---@param zones FoyerDebugZones
+---@param width number Canvas width in columns
+---@param config table Top-level config (for padding / margin values)
+function M.draw_zones(bufnr, zones, width, config)
   local ns = vim.api.nvim_create_namespace("foyer_debug")
-  local highlight_base = "FoyerDebug"
-  local colors = {
-    header = { bg = "#FF0000", fg = "#FFFFFF" },
-    menu   = { bg = "#00FF00", fg = "#000000" },
-    stats  = { bg = "#0000FF", fg = "#FFFFFF" },
-    footer = { bg = "#FF00FF", fg = "#000000" },
-  }
 
   -- Define highlight groups
-  for name, c in pairs(colors) do
-    vim.api.nvim_set_hl(0, highlight_base .. name, {
-      fg = c.fg,
-      bg = c.bg,
-      bold = true,
-    })
+  vim.api.nvim_set_hl(0, HL.margin.name,  { bg = HL.margin.bg })
+  vim.api.nvim_set_hl(0, HL.padding.name, { bg = HL.padding.bg })
+  for _, zone in pairs(HL.zones) do
+    vim.api.nvim_set_hl(0, zone.name, { bg = zone.bg })
   end
 
-  -- Clamp row to buffer bounds (zone.row is 1-indexed, extmark is 0-indexed)
   local buf_line_count = vim.api.nvim_buf_line_count(bufnr)
   if buf_line_count == 0 then return end
 
-  local function clamp_row(row)
-    -- row is 1-indexed from zone computation; extmark expects 0-indexed
-    local extmark_row = row - 1
-    return math.max(0, math.min(extmark_row, buf_line_count - 1))
+  local function extmark_row(row)
+    return math.max(0, math.min(row - 1, buf_line_count - 1))
   end
 
   for _, name in ipairs({ "header", "menu", "stats", "footer" }) do
     local zone = zones[name]
-    local c = colors[name]
-    if not zone or not c then return end
+    local zone_hl = HL.zones[name]
+    if not zone or not zone_hl then return end
 
-    -- Top border line via extmark highlight
-    local top = clamp_row(zone.row)
-    if top >= 0 then
-      vim.api.nvim_buf_set_extmark(bufnr, ns, top, 0, {
-        end_col = width,
-        hl_group = highlight_base .. name,
-        hl_eol = true,
-      })
+    local pad = (config[name] and config[name].zone and config[name].zone.padding) or { top = 0, bot = 0, left = 0, right = 0 }
+    local margin = (config[name] and config[name].zone and config[name].zone.margin) or { top = 0, bot = 0, left = 0, right = 0 }
+
+    local full_top = extmark_row(zone.row - margin.top)
+    local content_top = zone.row + pad.top
+    local content_bot = zone.row + zone.height - pad.bot - 1
+    local full_bot = extmark_row(zone.row + zone.height + margin.bot - 1)
+
+    -- Helper to paint a span of rows with a highlight group
+    ---@param from_row integer 0-indexed start
+    ---@param to_row integer 0-indexed end (inclusive)
+    ---@param hl_group string
+    local function paint_rows(from_row, to_row, hl_group)
+      for r = math.max(0, from_row), math.min(to_row, buf_line_count - 1) do
+        vim.api.nvim_buf_set_extmark(bufnr, ns, r, 0, {
+          end_col = width,
+          hl_group = hl_group,
+          hl_eol = true,
+        })
+      end
     end
 
-    -- Bottom border line
-    local bot = clamp_row(zone.row + zone.height - 1)
-    if bot >= 0 and bot <= top then
-      vim.api.nvim_buf_set_extmark(bufnr, ns, bot, 0, {
-        end_col = width,
-        hl_group = highlight_base .. name,
-        hl_eol = true,
-      })
+    -- Margin top
+    if margin.top > 0 then
+      paint_rows(full_top, extmark_row(zone.row - 1), HL.margin.name)
     end
 
-    -- Label at left margin
-    local label = string.format("%s(h=%d,r=%d)", name, zone.height, zone.row)
-    vim.api.nvim_buf_set_extmark(bufnr, ns, top, 0, {
-      virt_text = { { label, highlight_base .. name } },
+    -- Padding top
+    if pad.top > 0 then
+      paint_rows(extmark_row(zone.row), extmark_row(zone.row + pad.top - 1), HL.padding.name)
+    end
+
+    -- Content (zone border)
+    local content_start = extmark_row(content_top)
+    local content_end = extmark_row(content_bot)
+    if content_start <= content_end then
+      paint_rows(content_start, content_end, zone_hl.name)
+    end
+
+    -- Padding bottom
+    if pad.bot > 0 then
+      paint_rows(extmark_row(zone.row + zone.height - pad.bot), extmark_row(zone.row + zone.height - 1), HL.padding.name)
+    end
+
+    -- Margin bottom
+    if margin.bot > 0 then
+      paint_rows(extmark_row(zone.row + zone.height), full_bot, HL.margin.name)
+    end
+
+    -- Zone label virt_text on the first content row
+    local label_row = math.max(extmark_row(zone.row + pad.top), full_top)
+    local label = string.format(" %s(h=%d,r=%d) ", name, zone.height, zone.row)
+    vim.api.nvim_buf_set_extmark(bufnr, ns, label_row, 0, {
+      virt_text = { { label, zone_hl.name } },
     })
   end
 end
