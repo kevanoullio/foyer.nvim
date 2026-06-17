@@ -153,9 +153,8 @@ function M.render()
   require("foyer.layers.header").render(canvas, usable.width, usable.height, zones.header)
 
   -- Step 3: Render menu layer (returns interactive lines for keymap binding)
-  local interactive_lines
-  local menu_result = require("foyer.layers.menu").render(canvas, usable.width, usable.height, zones.menu)
-  interactive_lines = menu_result[2] or {}
+  local _, interactive_lines = require("foyer.layers.menu").render(canvas, usable.width, usable.height, zones.menu)
+  interactive_lines = interactive_lines or {}
 
   -- Step 3.5: Render stats layer
   local stats_config = require("foyer").config.stats
