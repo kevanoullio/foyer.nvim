@@ -1,9 +1,16 @@
 local M = {}
 
+local FOLDER_CAP = 500
+local FILE_CAP = 5000
+
 --- Formats a number with comma separators (e.g. 1234 -> "1,234").
+--- When capped is true, appends "+" instead (e.g. "500+").
 ---@param n number
+---@param cap number
+---@param capped boolean
 ---@return string
-local function fmt_num(n)
+local function fmt_num(n, cap, capped)
+  if capped then return cap .. "+" end
   local s = tostring(n)
   local changed
   repeat
@@ -119,7 +126,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
     ---@param skip table<string, true> Directory names to skip recursion into
     ---@param ignore_checker { is_ignored: fun(relpath: string, name: string, is_dir: boolean): boolean, flush: fun(cb: fun())? }|nil
     ---@param ignore_patterns string[] Lua patterns for custom ignores
-    ---@param cb fun(folders: integer, hidden_folders: integer, files: integer, hidden_files: integer)
+    ---@param cb fun(folders: integer, hidden_folders: integer, files: integer, hidden_files: integer, capped: {f: boolean, hf: boolean, fi: boolean, hi: boolean})
     local function async_scan(root, max_depth, batch, max_entries, skip, ignore_checker, ignore_patterns, cb)
       local result = { f = 0, hf = 0, fi = 0, hi = 0 }
       local dirs = { { path = root, hidden = false, depth = max_depth, relpath = "" } }
@@ -128,9 +135,10 @@ function M.render(canvas, width, _, zone, config, bufnr)
       local handle
 
       local done, finalize, flush_and_process, process_next_batch, scan_next_dir
+      local capped = { f = false, hf = false, fi = false, hi = false }
 
       done = function()
-        cb(result.f, result.hf, result.fi, result.hi)
+        cb(result.f, result.hf, result.fi, result.hi, capped)
       end
 
       finalize = function(collected, dir_done)
@@ -152,12 +160,18 @@ function M.render(canvas, width, _, zone, config, bufnr)
               local ch = current.hidden or (item.name:sub(1, 1) == ".")
               result.f = result.f + 1
               if ch then result.hf = result.hf + 1 end
+              if result.f >= FOLDER_CAP then capped.f = true end
+              if result.hf >= FOLDER_CAP then capped.hf = true end
+              if capped.f and capped.fi then return done() end
               if not skip[item.name] then
                 table.insert(dirs, { path = child_path, hidden = ch, depth = current.depth - 1, relpath = item.relpath })
               end
             else
               result.fi = result.fi + 1
               if current.hidden then result.hi = result.hi + 1 end
+              if result.fi >= FILE_CAP then capped.fi = true end
+              if result.hi >= FILE_CAP then capped.hi = true end
+              if capped.f and capped.fi then return done() end
             end
           end
 
@@ -220,12 +234,12 @@ function M.render(canvas, width, _, zone, config, bufnr)
         process_next_batch()
       end
 
-      vim.defer_fn(scan_next_dir, 1)
+      vim.defer_fn(scan_next_dir, 100)
     end
 
-    async_scan(path, depth, batch_size, max_entries, skip_dirs, ignore_checker, ignore_patterns, function(folders, hidden_folders, files, hidden_files)
+    async_scan(path, depth, batch_size, max_entries, skip_dirs, ignore_checker, ignore_patterns, function(folders, hidden_folders, files, hidden_files, capped)
       if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
-      M.update(bufnr, fs_stats_row, folders, hidden_folders, files, hidden_files, config)
+      M.update(bufnr, fs_stats_row, folders, hidden_folders, files, hidden_files, config, capped)
     end)
 
     row = row + 2
@@ -243,24 +257,28 @@ end
 ---@param files number File count
 ---@param hidden_files number Hidden file count
 ---@param config table Stats layer config (show flags)
-function M.update(bufnr, fs_row, folders, hidden_folders, files, hidden_files, config)
+---@param capped? {f: boolean, hf: boolean, fi: boolean, hi: boolean}
+function M.update(bufnr, fs_row, folders, hidden_folders, files, hidden_files, config, capped)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  capped = capped or { f = false, hf = false, fi = false, hi = false }
 
   local parts = {}
   if config.show.folders and config.show.hidden_folders then
-    table.insert(parts, string.format("%s folders (%s hidden)", fmt_num(folders), fmt_num(hidden_folders)))
+    table.insert(parts, string.format("%s folders (%s hidden)",
+      fmt_num(folders, FOLDER_CAP, capped.f), fmt_num(hidden_folders, FOLDER_CAP, capped.hf)))
   elseif config.show.folders then
-    table.insert(parts, string.format("%s folders", fmt_num(folders)))
+    table.insert(parts, string.format("%s folders", fmt_num(folders, FOLDER_CAP, capped.f)))
   elseif config.show.hidden_folders then
-    table.insert(parts, string.format("%s hidden", fmt_num(hidden_folders)))
+    table.insert(parts, string.format("%s hidden", fmt_num(hidden_folders, FOLDER_CAP, capped.hf)))
   end
 
   if config.show.files and config.show.hidden_files then
-    table.insert(parts, string.format("%s files (%s hidden)", fmt_num(files), fmt_num(hidden_files)))
+    table.insert(parts, string.format("%s files (%s hidden)",
+      fmt_num(files, FILE_CAP, capped.fi), fmt_num(hidden_files, FILE_CAP, capped.hi)))
   elseif config.show.files then
-    table.insert(parts, string.format("%s files", fmt_num(files)))
+    table.insert(parts, string.format("%s files", fmt_num(files, FILE_CAP, capped.fi)))
   elseif config.show.hidden_files then
-    table.insert(parts, string.format("%s hidden", fmt_num(hidden_files)))
+    table.insert(parts, string.format("%s hidden", fmt_num(hidden_files, FILE_CAP, capped.hi)))
   end
 
   local text = table.concat(parts, "  ")
