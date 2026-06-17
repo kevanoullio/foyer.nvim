@@ -9,6 +9,8 @@
 * **Isolated Interactivity:** Robust cursor-locking mechanics that restrict navigation strictly to active menu lines.
 * **Three Background Modes:** Static file (centered .txt), procedural generation (theme-based), or blank.
 * **Pluggable Generators:** Drop-in Lua modules under `lua/foyer/generators/` for custom background themes.
+* **Configurable Menu Alignment:** Position the menu vertically within its allocated space (`"top"`, `"center"`, or `"bottom"`).
+* **Precise Screen Sizing:** Accurately calculates usable terminal dimensions, accounting for `cmdheight`, statusline, and tabline.
 
 ---
 
@@ -115,6 +117,11 @@ require("foyer").setup({
       { icon = "󰒲 ", key = "l", desc = "Lazy",            action = ":Lazy" },
       { icon = " ", key = "q", desc = "Quit",            action = ":qa" },
     },
+    -- Vertical alignment of the menu within its allocated space (after the header).
+    -- "top"   = Menu immediately below the header (default gap preserved).
+    -- "center" = Menu centered in the remaining space.
+    -- "bottom" = Menu pushed to the bottom of the available area.
+    row_align = "center",
     hl_icon = "Special",
     hl_desc = "Normal",
     hl_key = "Keyword",
@@ -146,13 +153,17 @@ foyer.nvim/
 │       │   ├── init.lua        -- Theme registry & dispatch
 │       │   ├── stars.lua       -- Starfield theme
 │       │   └── waves.lua       -- Wave theme
-│       └── layers/             -- Data generators for visual components
-│           ├── background.lua
-│           ├── header.lua
-│           ├── menu.lua
-│           └── footer.lua
-
+│       ├── layers/             -- Data generators for visual components
+│       │   ├── background.lua
+│       │   ├── header.lua
+│       │   ├── menu.lua
+│       │   └── footer.lua
+│       └── lib/                -- Shared utilities
+│           ├── screen.lua      -- Usable terminal dimension calculation
+│           └── align.lua       -- Row/column alignment helpers
 ```
+
+All layers use the centralized `align` module for consistent horizontal and vertical positioning, and `screen.usable()` for accurate viewport dimensions that account for vim's reserved UI space (statusline, cmdheight, tabline).
 
 ## 📄 License
 
