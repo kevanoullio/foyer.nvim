@@ -144,6 +144,10 @@ end
 function M.render()
   if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then return end
 
+  -- Clear any stale debug overlays from previous renders
+  vim.api.nvim_buf_clear_namespace(M.bufnr,
+    vim.api.nvim_create_namespace("foyer_debug"), 0, -1)
+
   -- Get usable terminal dimensions (accounts for cmdheight and statusline)
   local screen = require("foyer.lib.screen")
   local usable = screen.usable()

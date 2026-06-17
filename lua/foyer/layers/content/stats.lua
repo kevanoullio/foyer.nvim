@@ -101,7 +101,8 @@ function M.render(canvas, width, _, zone, config, bufnr)
       local files = 0
       local hidden_files = 0
 
-      local function recurse(dir, in_hidden)
+      local function recurse(dir, in_hidden, depth)
+        if depth == 0 then return end
         local handle = vim.uv.fs_scandir(dir)
         if not handle then return end
         local entry
@@ -114,7 +115,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
             local child_hidden = in_hidden or (entry:sub(1, 1) == ".")
             folders = folders + 1
             if child_hidden then hidden_folders = hidden_folders + 1 end
-            if d > 1 then recurse(child_path, child_hidden) end
+            recurse(child_path, child_hidden, depth - 1)
           elseif stat and stat.type == "file" then
             files = files + 1
             if in_hidden then hidden_files = hidden_files + 1 end
@@ -122,7 +123,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
         end
       end
 
-      recurse(p, false)
+      recurse(p, false, d)
       return folders, hidden_folders, files, hidden_files
     end
 
