@@ -42,16 +42,15 @@ local function normalize_margin(val)
   }
 end
 
---- Computes zone positions for all layers based on their configured percentages.
---- Zones are allocated sequentially from top to bottom. Remaining space is
---- distributed as equal top/bottom margin to each zone.
+--- Computes content zone positions based on configured percentages.
+--- Zones are allocated sequentially from top to bottom within the content area.
+--- Remaining space is distributed as equal top/bottom margin to each zone.
 ---
 ---@param usable {width: number, height: number}
----@param config {background: table, header: table, menu: table, stats: table, footer: table}
----@return {background: {row: number, height: number}, header: {row: number, height: number}, menu: {row: number, height: number}, stats: {row: number, height: number}, footer: {row: number, height: number}}
-local function compute_zones(usable, config)
+---@param config {header: table, menu: table, stats: table, footer: table}
+---@return {header: {row: number, height: number}, menu: {row: number, height: number}, stats: {row: number, height: number}, footer: {row: number, height: number}}
+local function compute_content_zones(usable, config)
   local layers = {
-    { key = "background", zone = config.background.zone },
     { key = "header", zone = config.header.zone },
     { key = "menu", zone = config.menu.zone },
     { key = "stats", zone = config.stats.zone },
@@ -145,29 +144,29 @@ function M.render()
   local screen = require("foyer.lib.screen")
   local usable = screen.usable()
 
-  -- Compute zone positions for each layer
+  -- Compute content zone positions
   local config = require("foyer").config
-  local zones = compute_zones(usable, config)
+  local content_zones = compute_content_zones(usable, config)
 
   -- Create a fresh empty virtual canvas
   local canvas = Canvas.new(usable.width, usable.height)
 
-  -- Step 1: Render background layer (Opaque, covers full screen)
-  require("foyer.layers.background").render(canvas, usable.width, usable.height, zones.background)
+  -- Step 1: Render backdrop (background, opaque, covers full screen)
+  require("foyer.layers.background").render(canvas, usable.width, usable.height)
 
-  -- Step 2: Render foreground components sequentially using composition math (Transparent)
-  require("foyer.layers.header").render(canvas, usable.width, usable.height, zones.header)
+  -- Step 2: Render content zones sequentially on top (transparent composition)
+  require("foyer.layers.content.header").render(canvas, usable.width, usable.height, content_zones.header)
 
   -- Step 3: Render menu layer (returns interactive lines for keymap binding)
-  local _, interactive_lines = require("foyer.layers.menu").render(canvas, usable.width, usable.height, zones.menu)
+  local _, interactive_lines = require("foyer.layers.content.menu").render(canvas, usable.width, usable.height, content_zones.menu)
   interactive_lines = interactive_lines or {}
 
-  -- Step 3.5: Render stats layer
+  -- Step 4: Render stats layer
   local stats_config = require("foyer").config.stats
-  require("foyer.layers.stats").render(canvas, usable.width, usable.height, zones.stats, stats_config, M.bufnr)
+  require("foyer.layers.content.stats").render(canvas, usable.width, usable.height, content_zones.stats, stats_config, M.bufnr)
 
-  -- Step 4: Render footer layer
-  require("foyer.layers.footer").render(canvas, usable.width, usable.height, zones.footer)
+  -- Step 5: Render footer layer
+  require("foyer.layers.content.footer").render(canvas, usable.width, usable.height, content_zones.footer)
 
   -- Push contents from canvas matrix memory onto Neovim screen
   local text_lines, highlights = canvas:flush()

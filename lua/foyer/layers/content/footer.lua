@@ -1,6 +1,12 @@
 local M = {}
 local align = require("foyer.lib.align")
 
+--- Renders the footer text centered within its content zone.
+---@param canvas table Canvas instance
+---@param width number Canvas width
+---@param _ number Unused canvas height
+---@param zone {row: number, height: number} Content zone bounds
+---@return number Row after the footer line
 function M.render(canvas, width, _, zone)
   local config = require("foyer").config.footer
   if not config.text or config.text == "" then return zone.row end

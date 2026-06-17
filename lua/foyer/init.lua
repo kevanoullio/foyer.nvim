@@ -55,7 +55,7 @@ function M.restore_session()
 end
 
 M.config = {
-  -- Background layer options:
+  -- Background backdrop options:
   --   type = "file"      Load a static .txt file, centered on screen.
   --                        Falls back to "blank" if path is missing or unreadable.
   --          "generated" Procedurally generated art from a built-in theme.
@@ -73,11 +73,6 @@ M.config = {
     position = {
       row = "center",
       col = "center",
-    },
-    zone = {
-      percentage = 1.0,
-      padding = { top = 0, bot = 0, left = 0, right = 0 },
-      margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
   },
 
