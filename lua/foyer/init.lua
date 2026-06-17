@@ -134,6 +134,14 @@ M.config = {
     },
     path = nil,
     depth = 3,
+    max_entries = 5000,
+    batch_size = 50,
+    use_gitignore = true,
+    ignore_patterns = {},
+    skip_dirs = {
+      "node_modules", ".git", ".cache", "__pycache__",
+      ".venv", "vendor", ".next", "target", "build", "dist",
+    },
     position = {
       row = "center",
       col = "center",
