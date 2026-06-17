@@ -1,7 +1,7 @@
 local M = {}
 local align = require("foyer.lib.align")
 
-function M.render(canvas, width, height, zone)
+function M.render(canvas, width, _, zone)
   local config = require("foyer").config.menu
   local interactive_lines = {}
 

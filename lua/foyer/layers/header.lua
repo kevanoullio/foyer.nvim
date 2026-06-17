@@ -1,7 +1,7 @@
 local M = {}
 local align = require("foyer.lib.align")
 
-function M.render(canvas, width, height, zone)
+function M.render(canvas, width, _, zone)
   local config = require("foyer").config.header
   if not config.art or #config.art == 0 then return zone.row end
 
