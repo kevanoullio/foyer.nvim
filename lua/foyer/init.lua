@@ -1,5 +1,59 @@
 local M = {}
 
+--- Tries installed pickers in order: fzf-lua -> telescope -> mini.pick.
+--- Calls the first one that loads and exits. Falls back to a notification.
+---@param cmd string Picker command: "files", "live_grep", "oldfiles"
+---@param opts? {cwd?: string} Options forwarded to the picker
+---@return boolean true if a picker was found and executed
+local function pick(cmd, opts)
+  opts = opts or {}
+  local picker_opts = opts.cwd and { cwd = opts.cwd } or {}
+
+  local try = {
+    function() return require("fzf-lua")[cmd](picker_opts) end,
+    function()
+      local builtin = require("telescope.builtin")
+      local fn = cmd == "files" and "find_files" or cmd
+      return builtin[fn](picker_opts)
+    end,
+    function() return require("mini.pick").builtin[cmd](picker_opts) end,
+  }
+
+  for _, fn in ipairs(try) do
+    local ok, _ = pcall(fn)
+    if ok then return true end
+  end
+
+  vim.notify("No picker found for " .. cmd, vim.log.levels.WARN)
+  return false
+end
+
+--- Restores the last session using whichever session plugin is installed.
+--- Tries persistence, persisted, session-manager, possession, mini.sessions,
+--- and auto-session in that order. Falls back to a notification.
+---@return boolean true if a session was restored
+function M.restore_session()
+  local plugins = {
+    { mod = "persistence",     cmd = function(mod) mod.load() end },
+    { mod = "persisted",       cmd = function(mod) mod.load() end },
+    { mod = "session_manager", cmd = function() vim.cmd("SessionManager load_current_dir_session") end },
+    { mod = "possession",      cmd = function() vim.cmd("PossessionLoadCwd") end },
+    { mod = "mini.sessions",   cmd = function(mod) mod.read() end },
+    { mod = "auto_session",    cmd = function() vim.cmd("AutoSession restore") end },
+  }
+
+  for _, plugin in ipairs(plugins) do
+    local ok, mod = pcall(require, plugin.mod)
+    if ok and mod then
+      plugin.cmd(mod)
+      return true
+    end
+  end
+
+  vim.notify("No session plugin found", vim.log.levels.WARN)
+  return false
+end
+
 M.config = {
   -- Background layer options:
   --   type = "file"      Load a static .txt file, centered on screen.
@@ -50,12 +104,12 @@ M.config = {
 
   menu = {
     items = {
-      { icon = " ", key = "f", desc = "Find File", action = function() M.pick("files") end },
+      { icon = " ", key = "f", desc = "Find File", action = function() pick("files") end },
       { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
-      { icon = " ", key = "g", desc = "Find Text", action = function() M.pick("live_grep") end },
-      { icon = " ", key = "r", desc = "Recent Files", action = function() M.pick("oldfiles") end },
-      { icon = " ", key = "c", desc = "Config", action = function() M.pick("files", { cwd = vim.fn.stdpath("config") }) end },
-      { icon = " ", key = "s", desc = "Restore Session", action = function() M.restore_session() end },
+      { icon = " ", key = "g", desc = "Find Text", action = function() pick("live_grep") end },
+      { icon = " ", key = "r", desc = "Recent Files", action = function() pick("oldfiles") end },
+      { icon = " ", key = "c", desc = "Config", action = function() pick("files", { cwd = vim.fn.stdpath("config") }) end },
+      { icon = " ", key = "s", desc = "Restore Session", action = M.restore_session },
       { icon = " ", key = "x", desc = "Lazy Extras", action = ":LazyExtras" },
       { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy" },
       { icon = " ", key = "q", desc = "Quit", action = ":qa" },
@@ -112,70 +166,10 @@ M.config = {
   },
 }
 
-function M.pick(cmd, opts)
-  opts = opts or {}
-  local cwd = opts.cwd
-
-  local ok_snacks, snacks = pcall(require, "snacks")
-  if ok_snacks and snacks.picker then
-    local picker_opts = cwd and { cwd = cwd } or {}
-    if cmd == "files" then
-      snacks.picker.files(picker_opts)
-    elseif cmd == "live_grep" then
-      snacks.picker.grep(picker_opts)
-    elseif cmd == "oldfiles" then
-      snacks.picker.recent(picker_opts)
-    end
-    return
-  end
-
-  local ok_telescope, builtin = pcall(require, "telescope.builtin")
-  if ok_telescope then
-    local telescope_opts = cwd and { cwd = cwd } or {}
-    if cmd == "files" then
-      builtin.find_files(telescope_opts)
-    elseif cmd == "live_grep" then
-      builtin.live_grep(telescope_opts)
-    elseif cmd == "oldfiles" then
-      builtin.oldfiles(telescope_opts)
-    end
-    return
-  end
-
-  local ok_fzf, fzf = pcall(require, "fzf-lua")
-  if ok_fzf then
-    local fzf_opts = cwd and { cwd = cwd } or {}
-    if cmd == "files" then
-      fzf.files(fzf_opts)
-    elseif cmd == "live_grep" then
-      fzf.live_grep(fzf_opts)
-    elseif cmd == "oldfiles" then
-      fzf.oldfiles(fzf_opts)
-    end
-  end
-end
-
-function M.restore_session()
-  local session_plugins = {
-    { name = "persistence", mod = "persistence", cmd = function() require("persistence").load() end },
-    { name = "persisted", mod = "persisted", cmd = function() require("persisted").load() end },
-    { name = "neovim-session-manager", mod = "session_manager", cmd = function() vim.cmd("SessionManager load_current_dir_session") end },
-    { name = "possession", mod = "possession", cmd = function() vim.cmd("PossessionLoadCwd") end },
-    { name = "mini.sessions", mod = "mini.sessions", cmd = function() require("mini.sessions").read() end },
-    { name = "auto-session", mod = "auto_session", cmd = function() vim.cmd("AutoSession restore") end },
-  }
-
-  for _, plugin in ipairs(session_plugins) do
-    local ok, mod = pcall(require, plugin.mod)
-    if ok then
-      plugin.cmd()
-      return
-    end
-  end
-
-  vim.notify("No session plugin found", vim.log.levels.WARN)
-end
-
+--- Sets up foyer.nvim with the given options.
+--- Merges user config with defaults, creates the VimEnter autocmd to show the
+--- dashboard on startup, and exposes the `:Foyer` user command.
+---@param opts? table User configuration table (merged into M.config)
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.config, opts or {})
 
