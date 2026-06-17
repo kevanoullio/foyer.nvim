@@ -95,9 +95,12 @@ local function compute_content_zones(usable, config)
   return zones
 end
 
+M.compute_zones = compute_content_zones
+
 --- Opens the Foyer dashboard in a new scratch buffer or switches to an existing one.
 --- Creates the buffer, configures window options, triggers render, and sets up
 --- dynamic resizing on VimResized.
+--- @return nil
 function M.open()
   if M.bufnr and vim.api.nvim_buf_is_valid(M.bufnr) then
     vim.api.nvim_set_current_buf(M.bufnr)
@@ -137,6 +140,7 @@ end
 --- Renders all dashboard layers onto the canvas and pushes them to the buffer.
 --- Clears previous highlights, then applies new ones from the flush output.
 --- Finally attaches interactive navigation to the menu rows.
+--- @return nil
 function M.render()
   if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then return end
 
@@ -147,6 +151,11 @@ function M.render()
   -- Compute content zone positions
   local config = require("foyer").config
   local content_zones = compute_content_zones(usable, config)
+
+  -- Debug: log zones when enabled
+  if config.debug and config.debug.enabled then
+    require("foyer.lib.debug").log("zones", vim.inspect(content_zones))
+  end
 
   -- Create a fresh empty virtual canvas
   local canvas = Canvas.new(usable.width, usable.height)
@@ -170,6 +179,11 @@ function M.render()
 
   -- Push contents from canvas matrix memory onto Neovim screen
   local text_lines, highlights = canvas:flush()
+
+  -- Debug: draw zone boundaries on the buffer when enabled
+  if config.debug and config.debug.enabled then
+    require("foyer.lib.debug").draw_zones(M.bufnr, content_zones, usable.width)
+  end
 
   vim.bo[M.bufnr].modifiable = true
   vim.api.nvim_buf_set_lines(M.bufnr, 0, -1, false, text_lines)

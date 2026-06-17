@@ -205,6 +205,107 @@ All layers default to `"center"` for both axes.
 
 ---
 
+## 🐛 Debugging
+
+foyer.nvim includes a built-in debug system for diagnosing layout issues such as misaligned content or layers that are not rendering. Inspired by `Snacks.debug`, it provides three levels of visibility.
+
+### Enabling Debug
+
+Set `debug.enabled = true` in your setup options:
+
+```lua
+require("foyer").setup({
+  debug = {
+    enabled = true,
+    log_file = "./foyer-debug.log",  -- optional, default is ./foyer-debug.log
+  },
+})
+```
+
+### 1. Visual Zone Overlays
+
+With debug enabled, colored horizontal lines are drawn on the buffer showing each zone's boundaries:
+
+| Color | Layer |
+|---|---|
+| Red | `header` |
+| Green | `menu` |
+| Blue | `stats` |
+| Magenta | `footer` |
+
+Each boundary line is labeled at the left margin with `name(h=<height>,r=<row>)`. This lets you visually confirm that zones are positioned where you expect relative to your terminal dimensions.
+
+### 2. Debug Log File
+
+Every render writes the computed zones to `./foyer-debug.log` (path configurable via `debug.log_file`). Each entry is timestamped and contains a `vim.inspect` dump of the zone table:
+
+```
+2026-01-15 10:30:42  zones {
+  header = {
+    height = 25,
+    row = 1
+  },
+  menu = {
+    height = 40,
+    row = 29
+  },
+  stats = {
+    height = 15,
+    row = 71
+  },
+  footer = {
+    height = 10,
+    row = 88
+  }
+}
+```
+
+This is useful for tracking how zones change across terminal resizes or config edits.
+
+### 3. `:FoyerDebug` Command
+
+Run `:FoyerDebug` to get a notification with a complete layout report:
+
+```
+## Foyer Debug
+Canvas: 120x40
+Total zone pct: 0.90
+Debug enabled: true
+
+=== Zone Configs ===
+header: pct=0.25 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+menu:   pct=0.40 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+stats:  pct=0.15 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+footer: pct=0.10 pad={t=2,b=2,l=2,r=2} margin={t=0,b=0,l=0,r=0}
+
+=== Computed Zones ===
+header: row=1 height=25 (row+height=26)
+menu:   row=29 height=40 (row+height=69)
+stats:  row=71 height=15 (row+height=86)
+footer: row=88 height=10 (row+height=98)
+
+Next after footer: row 98 (canvas height: 98)
+```
+
+The command also detects and reports overflow — if the total content extends past the canvas height, a warning is shown:
+
+```
+OVERFLOW: content extends 3 lines past canvas
+WARNING: footer zone extends 3 lines beyond canvas
+```
+
+This helps when your zone percentages + padding push content beyond the available terminal rows.
+
+### Debugging Common Issues
+
+**Header not centered:** Check that `zone.padding.left` is accounted for. The header now uses `pad.left` in its column offset calculation, matching menu/stats/footer.
+
+**Footer not visible:** Run `:FoyerDebug` and check for the overflow warning. If the footer zone extends past `canvas height`, its content is silently clipped by the canvas bounds check. Reduce zone percentages or padding to fix.
+
+**Content offset by a few columns:** Verify `zone.padding.left` values match across layers. A mismatch between the header's centering calculation and other layers causes horizontal drift.
+
+---
+
 ## 🛠️ Architecture Overview
 
 The plugin's directory structure isolates presentation logic from data layout computation:
@@ -229,10 +330,13 @@ foyer.nvim/
 │       │   └── footer.lua
 │       └── lib/                -- Shared utilities
 │           ├── screen.lua      -- Usable terminal dimension calculation
-│           └── align.lua       -- Row/column alignment helpers
+│           ├── align.lua       -- Row/column alignment helpers
+│           └── debug.lua       -- Debug logging & visual zone overlays
 ```
 
 All layers use the centralized `align` module for consistent horizontal and vertical positioning, and `screen.usable()` for accurate viewport dimensions that account for vim's reserved UI space (statusline, cmdheight, tabline).
+
+When `debug.enabled` is set, `debug.log()` writes timestamped render state to a file and `debug.draw_zones()` overlays colored boundary lines on the buffer for visual layout inspection.
 
 ## 📄 License
 
