@@ -27,8 +27,8 @@ function M.render(canvas, width, _, zone, config, bufnr)
   if not show then return zone.row, {} end
 
   local has_any = show.plugins_loaded or show.plugin_load_time or
-                  show.folders or show.hidden_folders or
-                  show.files or show.hidden_files
+      show.folders or show.hidden_folders or
+      show.files or show.hidden_files
   if not has_any then return zone.row, {} end
 
   local pad = config.zone.padding
@@ -94,7 +94,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
     --- folders and files (including hidden items).
     ---@param p string Starting directory path
     ---@param d integer Maximum recursion depth
-    ---@return integer, integer, integer, integer folders, hidden_folders, files, hidden_files
+    ---@return integer folders, integer hidden_folders, integer files, integer hidden_files
     local function scan(p, d)
       local folders = 0
       local hidden_folders = 0
@@ -108,10 +108,10 @@ function M.render(canvas, width, _, zone, config, bufnr)
         while true do
           entry = vim.uv.fs_scandir_next(handle)
           if not entry then break end
-          local child_path = vim.fn.joinpath(dir, entry.name)
+          local child_path = vim.fn.joinpath(dir, entry)
           local stat = vim.uv.fs_stat(child_path)
           if stat and stat.type == "directory" then
-            local child_hidden = in_hidden or (entry.name:sub(1, 1) == ".")
+            local child_hidden = in_hidden or (entry:sub(1, 1) == ".")
             folders = folders + 1
             if child_hidden then hidden_folders = hidden_folders + 1 end
             if d > 1 then recurse(child_path, child_hidden) end
@@ -130,7 +130,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
     vim.defer_fn(function()
       local folders, hidden_folders, files, hidden_files = scan(path, depth)
       if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
-      M.update(bufnr, fs_stats_row, folders, hidden_folders, files, hidden_files, config, hl)
+      M.update(bufnr, fs_stats_row, folders, hidden_folders, files, hidden_files, config)
     end, 10)
 
     row = row + 2
@@ -148,8 +148,7 @@ end
 ---@param files number File count
 ---@param hidden_files number Hidden file count
 ---@param config table Stats layer config (show flags)
----@param hl string Highlight group
-function M.update(bufnr, fs_row, folders, hidden_folders, files, hidden_files, config, hl)
+function M.update(bufnr, fs_row, folders, hidden_folders, files, hidden_files, config)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
   local parts = {}
