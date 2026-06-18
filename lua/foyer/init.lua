@@ -1,8 +1,8 @@
 local M = {}
 
---- Tries installed pickers in order: fzf-lua -> telescope -> mini.pick.
+--- Tries installed pickers in order: snacks -> fzf-lua -> telescope -> mini.pick.
 --- Calls the first one that loads and exits. Falls back to a notification.
----@param cmd string Picker command: "files", "live_grep", "oldfiles"
+---@param cmd string Picker command: "files", "live_grep", "oldfiles", "projects"
 ---@param opts? {cwd?: string} Options forwarded to the picker
 ---@return boolean true if a picker was found and executed
 local function pick(cmd, opts)
@@ -10,6 +10,15 @@ local function pick(cmd, opts)
   local picker_opts = opts.cwd and { cwd = opts.cwd } or {}
 
   local try = {
+    -- Snacks picker first (LazyVim default, highest priority)
+    function()
+      local snacks = require("snacks")
+      if cmd == "projects" then
+        return snacks.picker.projects()
+      end
+      return snacks.picker[cmd](picker_opts)
+    end,
+    -- External pickers
     function() return require("fzf-lua")[cmd](picker_opts) end,
     function()
       local builtin = require("telescope.builtin")
@@ -101,6 +110,7 @@ M.config = {
     items = {
       { icon = " ", key = "f", desc = "Find File", action = function() pick("files") end },
       { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
+      { icon = " ", key = "p", desc = "Projects", action = function() pick("projects") end },
       { icon = " ", key = "g", desc = "Find Text", action = function() pick("live_grep") end },
       { icon = " ", key = "r", desc = "Recent Files", action = function() pick("oldfiles") end },
       { icon = " ", key = "c", desc = "Config", action = function() pick("files", { cwd = vim.fn.stdpath("config") }) end },
