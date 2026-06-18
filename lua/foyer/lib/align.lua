@@ -9,12 +9,18 @@ local M = {}
 --- @param position "left" | "center" | "right" | "top" | "bottom" Alignment mode
 --- @return number Offset value (unclamped, may be negative)
 local function _align(container, content, position)
-  if position == "center" then
+  if position == "left" then
+    return 0
+  elseif position == "center" then
     return math.floor((container - content) / 2)
   elseif position == "right" then
     return container - content
+  elseif position == "top" then
+    return 0
+  elseif position == "bottom" then
+    return container - content
   end
-  -- "left" / "top" / default
+  -- default
   return 0
 end
 

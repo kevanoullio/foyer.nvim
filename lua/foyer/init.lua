@@ -101,7 +101,7 @@ M.config = {
     },
     zone = {
       percentage = 0.30,
-      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      padding = { top = 1, bot = 1, left = 1, right = 1 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
   },
@@ -125,7 +125,7 @@ M.config = {
     },
     zone = {
       percentage = 0.40,
-      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      padding = { top = 1, bot = 1, left = 1, right = 1 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
     hl_icon = "Special",
@@ -158,7 +158,7 @@ M.config = {
     },
     zone = {
       percentage = 0.15,
-      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      padding = { top = 1, bot = 1, left = 1, right = 1 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
     hl_text = "Comment",
@@ -173,7 +173,7 @@ M.config = {
     },
     zone = {
       percentage = 0.15,
-      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      padding = { top = 1, bot = 1, left = 1, right = 1 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
   },
