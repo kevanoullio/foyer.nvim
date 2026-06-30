@@ -1,10 +1,25 @@
 local M = {}
 
+--- Resolves a log file path. If nil or empty, defaults to
+--- stdpath("state")/foyer/foyer-debug.log.
+---@param filepath string|nil
+---@return string
+function M.resolve(filepath)
+  if filepath and filepath ~= "" then
+    return filepath
+  end
+  local state_dir = vim.fn.stdpath("state")
+  local log_dir = state_dir "/foyer"
+  vim.fn.mkdir(log_dir, "p")
+  return log_dir "/foyer-debug.log"
+end
+
 --- Append a line to the given log file.
----@param filepath string Path to the log file
+---@param filepath string|nil Path to the log file (nil = default location)
 ---@param ... any Values to concatenate into the line
 function M.log(filepath, ...)
-  local fd = io.open(filepath, "a+")
+  local resolved = M.resolve(filepath)
+  local fd = io.open(resolved, "a+")
   if not fd then return end
   local parts = {}
   for i = 1, select("#", ...) do
@@ -16,9 +31,10 @@ function M.log(filepath, ...)
 end
 
 --- Write a batch separator between render cycles.
----@param filepath string Path to the log file
+---@param filepath string|nil Path to the log file (nil = default location)
 function M.sep(filepath)
-  local fd = io.open(filepath, "a+")
+  local resolved = M.resolve(filepath)
+  local fd = io.open(resolved, "a+")
   if not fd then return end
   fd:write("\n----------------------\n")
   fd:close()

@@ -186,7 +186,8 @@ M.config = {
   log = {
     enabled = false,
     zones = false,
-    file = "./foyer-debug.log",
+    -- nil resolves to stdpath("state")/foyer/foyer-debug.log at runtime
+    file = nil,
   },
 }
 
