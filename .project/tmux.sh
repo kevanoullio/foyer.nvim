@@ -11,9 +11,13 @@ if [ $? != 0 ]; then
     tmux new-session -d -s "$SESSION" -n "git" -c "$PROJECT_ROOT"
     tmux send-keys -t "$SESSION:git" "lazygit" C-m
 
+    # llama setup
+    tmux new-window -t "$SESSION" -n "llama" -c "$PROJECT_ROOT"
+    tmux send-keys -t "$SESSION:llama" "llama-swap --config ~/.config/llama-swap/llama-swap.yaml"
+
     # ai
     tmux new-window -t "$SESSION" -n "ai" -c "$PROJECT_ROOT"
-    tmux send-keys -t "$SESSION:ai" "opencode"
+    tmux send-keys -t "$SESSION:ai" "pi"
 
     # nvim
     tmux new-window -t "$SESSION" -n "nvim" -c "$PROJECT_ROOT"
