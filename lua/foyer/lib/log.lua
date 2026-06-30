@@ -9,9 +9,9 @@ function M.resolve(filepath)
     return filepath
   end
   local state_dir = vim.fn.stdpath("state")
-  local log_dir = state_dir "/foyer"
+  local log_dir = state_dir .. "/foyer"
   vim.fn.mkdir(log_dir, "p")
-  return log_dir "/foyer-debug.log"
+  return log_dir .. "/foyer-debug.log"
 end
 
 --- Append a line to the given log file.
