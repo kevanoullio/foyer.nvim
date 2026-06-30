@@ -98,8 +98,9 @@ end
 M.compute_zones = compute_content_zones
 
 --- Opens the Foyer dashboard in a new scratch buffer or switches to an existing one.
---- Creates the buffer, configures window options, triggers render, and sets up
---- dynamic resizing on VimResized.
+--- If called on startup (reusing the initial empty buffer), it repurposes that
+--- buffer instead of creating an extra one. Creates the buffer, configures window
+--- options, triggers render, and sets up dynamic resizing on VimResized.
 --- @return nil
 function M.open()
   if M.bufnr and vim.api.nvim_buf_is_valid(M.bufnr) then
@@ -107,8 +108,16 @@ function M.open()
     return
   end
 
-  M.bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_set_current_buf(M.bufnr)
+  -- Reuse the initial empty buffer if it exists, to avoid leaving a stale
+  -- empty buffer behind when foyer is closed. This matches how snacks/dashboard
+  -- behave (no extra empty buffer after picking a file).
+  local cur_buf = vim.api.nvim_get_current_buf()
+  if vim.api.nvim_buf_get_name(cur_buf) == "" and vim.bo[cur_buf].buftype == "" then
+    M.bufnr = cur_buf
+  else
+    M.bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(M.bufnr)
+  end
 
   -- Set safe buffer options for a pristine, non-file screen
   local opts = {
