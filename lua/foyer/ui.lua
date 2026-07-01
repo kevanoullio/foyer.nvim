@@ -148,16 +148,29 @@ function M.open()
 
   M.render()
 
-  -- Restore window options when the user leaves the foyer buffer
+  -- Restore window options when the foyer buffer is no longer visible anywhere
+  -- (not just when focus shifts — e.g. a picker can take focus while the
+  --  foyer buffer remains on-screen in the background).
   local restore_watched = false
   vim.api.nvim_create_autocmd({ "BufLeave", "BufWipeout" }, {
     buffer = M.bufnr,
     callback = function()
-      -- Guard against double-fire (BufLeave + BufWipeout can both trigger)
       if restore_watched then return end
       restore_watched = true
 
-      if M.saved_wo then
+      -- Only restore if the foyer buffer is truly gone from every window.
+      -- This prevents premature restore when a picker/floating window takes
+      -- focus but the foyer dashboard is still visible behind it.
+      local still_visible = false
+      for _, winid in ipairs(vim.api.nvim_list_wins()) do
+        if vim.api.nvim_win_is_valid(winid)
+          and vim.api.nvim_win_get_buf(winid) == M.bufnr then
+          still_visible = true
+          break
+        end
+      end
+
+      if not still_visible and M.saved_wo then
         vim.wo.number = M.saved_wo.number
         vim.wo.relativenumber = M.saved_wo.relativenumber
         vim.wo.signcolumn = M.saved_wo.signcolumn
