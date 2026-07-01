@@ -78,7 +78,7 @@ function M.render(canvas, width, _, zone)
 
     table.insert(interactive_lines, {
       row = row,
-      col = icon_col,
+      col = desc_col,
       key = item.raw.key,
       action = item.raw.action,
     })
