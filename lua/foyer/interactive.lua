@@ -26,39 +26,109 @@ function M.attach(bufnr, interactive_rows)
     row_map[item.row] = item.action
   end
 
+  -- Sorted list of valid menu row numbers (0-indexed) for quick lookup
+  local sorted_rows = {}
+  for _, item in ipairs(cursor_rows) do
+    table.insert(sorted_rows, item.row)
+  end
+  table.sort(sorted_rows)
+
+  -- Column lookup: row -> col
+  local row_col_map = {}
+  for _, item in ipairs(cursor_rows) do
+    row_col_map[item.row] = item.col
+  end
+
+  -- Track previous cursor row to determine navigation direction
+  local prev_row = nil
+
+  --- Finds the next valid menu row in the given direction.
+  --- @param from_row number Current (invalid) cursor row
+  --- @param direction number 1 for down, -1 for up
+  --- @return number target row
+  local function find_next_row_in_direction(from_row, direction)
+    if direction == 1 then
+      -- Moving down: find first valid row strictly above from_row, or wrap to first
+      for _, r in ipairs(sorted_rows) do
+        if r >= from_row then
+          return r
+        end
+      end
+      return sorted_rows[1]
+    else
+      -- Moving up: find last valid row strictly below from_row, or wrap to last
+      for i = #sorted_rows, 1, -1 do
+        if sorted_rows[i] <= from_row then
+          return sorted_rows[i]
+        end
+      end
+      return sorted_rows[#sorted_rows]
+    end
+  end
+
+  --- Finds the nearest valid menu row (used when direction is unknown).
+  --- @param from_row number Current cursor row
+  --- @return number target row
+  local function find_nearest_row(from_row)
+    local target_row = sorted_rows[1]
+    local min_dist = math.abs(from_row - target_row)
+
+    for _, r in ipairs(sorted_rows) do
+      local dist = math.abs(from_row - r)
+      if dist < min_dist then
+        min_dist = dist
+        target_row = r
+      end
+    end
+    return target_row
+  end
+
   -- Force cursor onto the first valid option immediately
   vim.api.nvim_win_set_cursor(0, { cursor_rows[1].row, cursor_rows[1].col })
+  prev_row = cursor_rows[1].row
 
-  -- Setup navigation boundaries hook
+  -- Setup navigation boundaries hook with direction-aware snapping
   vim.api.nvim_create_autocmd("CursorMoved", {
     buffer = bufnr,
     callback = function()
       local curr_row = vim.api.nvim_win_get_cursor(0)[1]
 
-      -- Check if cursor stepped out of a valid menu interaction line
-      if not row_map[curr_row] then
-        local target_row = cursor_rows[1].row
-        local min_dist = math.abs(curr_row - target_row)
-
-        for _, item in ipairs(cursor_rows) do
-          local dist = math.abs(curr_row - item.row)
-          if dist < min_dist then
-            min_dist = dist
-            target_row = item.row
-          end
-        end
-
-        -- Find target column for locking alignment
-        local target_col = 0
-        for _, item in ipairs(cursor_rows) do
-          if item.row == target_row then
-            target_col = item.col
-            break
-          end
-        end
-
-        vim.api.nvim_win_set_cursor(0, { target_row, target_col })
+      -- If cursor is on a valid menu row, just update tracking
+      if row_map[curr_row] then
+        prev_row = curr_row
+        return
       end
+
+      -- Cursor landed on an invalid row (e.g. gap between items).
+      -- Determine direction of travel and snap forward, not backward.
+      local direction = 1 -- default: down
+      if prev_row ~= nil then
+        if curr_row < prev_row then
+          direction = -1
+        end
+      end
+
+      local target_row
+      if prev_row == nil then
+        -- First move (shouldn't happen, but safety net)
+        target_row = find_nearest_row(curr_row)
+      else
+        target_row = find_next_row_in_direction(curr_row, direction)
+      end
+
+      -- Preserve current row if we'd snap back to where we came from
+      -- (e.g. at boundary, direction is down but no row below exists)
+      if direction == 1 and target_row < prev_row then
+        -- We're at the bottom; stay on prev_row
+        target_row = prev_row
+      elseif direction == -1 and target_row > prev_row then
+        -- We're at the top; stay on prev_row
+        target_row = prev_row
+      end
+
+      local target_col = row_col_map[target_row] or 0
+      vim.api.nvim_win_set_cursor(0, { target_row, target_col })
+      prev_row = target_row
     end,
   })
 

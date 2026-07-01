@@ -146,6 +146,9 @@ M.config = {
     hl_icon = "Special",
     hl_desc = "Normal",
     hl_key = "Keyword",
+    -- Horizontal shift: moves icon+desc left and key right (each by this many chars),
+    -- widening the gap between description and keymap. Set to 0 for default centered layout.
+    h_shift = 10,
   },
 
   stats = {

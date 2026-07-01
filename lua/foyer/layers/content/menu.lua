@@ -14,7 +14,9 @@ function M.render(canvas, width, _, zone)
 
   if not config.items or #config.items == 0 then return zone.row, {} end
 
-  -- Measure column widths across all items
+  -- Measure column widths across all items.
+  -- Use vim.fn.strchars() for correct character-count measurement
+  -- (critical for multi-byte UTF-8 icons like Nerd Font symbols).
   local max_icon_w = 0
   local max_desc_w = 0
   local max_key_w = 0
@@ -24,9 +26,12 @@ function M.render(canvas, width, _, zone)
     local icon = item.icon or ""
     local desc = item.desc or ""
     local key_display = item.key and ("[" .. item.key .. "]") or ""
-    if #icon > max_icon_w then max_icon_w = #icon end
-    if #desc > max_desc_w then max_desc_w = #desc end
-    if #key_display > max_key_w then max_key_w = #key_display end
+    local icon_w = vim.fn.strchars(icon)
+    local desc_w = vim.fn.strchars(desc)
+    local key_w = vim.fn.strchars(key_display)
+    if icon_w > max_icon_w then max_icon_w = icon_w end
+    if desc_w > max_desc_w then max_desc_w = desc_w end
+    if key_w > max_key_w then max_key_w = key_w end
     table.insert(prepared, { icon = icon, desc = desc, key_display = key_display, raw = item })
   end
 
@@ -44,20 +49,25 @@ function M.render(canvas, width, _, zone)
     menu_row = inner_top
   end
 
-  -- Compute horizontal position within the padded zone
-  local block_width = max_icon_w + 2 + max_desc_w + 2 + max_key_w
+  -- Horizontal shift: moves icon+desc left and key right, widening the gap
+  -- between description and keymap. Default 0 means no shift.
+  local h_shift = config.h_shift or 0
+
+  -- Compute horizontal position within the padded zone.
+  -- The effective block includes the extra gap introduced by h_shift.
+  local block_width = max_icon_w + 2 + max_desc_w + 2 + max_key_w + (h_shift * 2)
   local col_offset = align.col(width, block_width, "center")
-  local start_col = 1 + pad.left + col_offset
+  local start_col = 1 + pad.left + col_offset - h_shift
 
   for idx, item in ipairs(prepared) do
     local row = menu_row + (idx - 1) * 2
 
     local icon_col = start_col
     local desc_col = start_col + max_icon_w + 2
-    local key_col = start_col + max_icon_w + 2 + max_desc_w + 2
+    local key_col = start_col + max_icon_w + 2 + max_desc_w + 2 + (h_shift * 2)
 
     -- Right-align key within its column (handles variable-width keys)
-    key_col = key_col + (max_key_w - #item.key_display)
+    key_col = key_col + (max_key_w - vim.fn.strchars(item.key_display))
 
     canvas:blend({ item.icon }, row, icon_col, true, config.hl_icon)
     canvas:blend({ item.desc }, row, desc_col, true, config.hl_desc)

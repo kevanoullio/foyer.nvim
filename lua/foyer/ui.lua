@@ -147,6 +147,7 @@ function M.open()
     relativenumber = vim.wo[M.winid].relativenumber,
     signcolumn = vim.wo[M.winid].signcolumn,
     foldcolumn = vim.wo[M.winid].foldcolumn,
+    cursorline = vim.wo[M.winid].cursorline,
   }
 
   -- Clean window layout options on the foyer window
@@ -154,6 +155,7 @@ function M.open()
   vim.wo[M.winid].relativenumber = false
   vim.wo[M.winid].signcolumn = "no"
   vim.wo[M.winid].foldcolumn = "0"
+  vim.wo[M.winid].cursorline = true
 
   M.render()
 
@@ -182,6 +184,7 @@ function M.open()
         vim.wo[M.winid].relativenumber = M.saved_wo.relativenumber
         vim.wo[M.winid].signcolumn = M.saved_wo.signcolumn
         vim.wo[M.winid].foldcolumn = M.saved_wo.foldcolumn
+        vim.wo[M.winid].cursorline = M.saved_wo.cursorline
       end
 
       -- One-time restore guard

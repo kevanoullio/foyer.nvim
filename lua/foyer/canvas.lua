@@ -19,7 +19,19 @@ function M.new(width, height)
   return self
 end
 
---- Blends an array of strings into the canvas grid
+--- Extracts a single character from a string at a given 0-based character index.
+--- Uses vim.fn.strcharpart for correct UTF-8 multi-byte character handling.
+--- @param s string The source string
+--- @param char_idx number 0-based character index
+--- @return string Single character (may be multi-byte)
+local function char_at(s, char_idx)
+  return vim.fn.strcharpart(s, char_idx, 1)
+end
+
+--- Blends an array of strings into the canvas grid.
+--- Operates at the character level (not byte level) so that multi-byte UTF-8
+--- characters (e.g. Nerd Font icons) occupy exactly one canvas column each,
+--- matching the terminal's display behavior.
 --- @param lines table Array of strings representing the graphic asset
 --- @param start_row number 1-indexed top coordinate
 --- @param start_col number 1-indexed left coordinate
@@ -30,12 +42,20 @@ function Canvas:blend(lines, start_row, start_col, transparent, hl_group)
     local target_r = start_row + r_offset - 1
     if target_r > self.height then break end
 
-    for c_offset = 1, #line do
-      local target_c = start_col + c_offset - 1
-      if target_c > self.width then break end
-      if target_c < 1 then goto skip end
+    -- Measure character count (not byte count) for correct column alignment
+    local char_count = vim.fn.strchars(line)
 
-      local char = line:sub(c_offset, c_offset)
+    for c_offset = 0, char_count - 1 do
+      local target_c = start_col + c_offset
+      if target_c > self.width then break end
+      if target_c < 1 then
+        -- Skip leading columns that fall off the left edge,
+        -- but still advance the loop to stay in sync
+        goto continue
+      end
+
+      -- Extract one full character (may be multi-byte UTF-8)
+      local char = char_at(line, c_offset)
 
       if not (transparent and char == " ") then
         if self.grid[target_r] then
@@ -43,17 +63,18 @@ function Canvas:blend(lines, start_row, start_col, transparent, hl_group)
         end
       end
 
-      ::skip::
+      ::continue::
     end
 
-    -- Save highlights bound to this row segment
+    -- Save highlights bound to this row segment.
+    -- Use character count (not byte length) for correct highlight boundaries.
     if hl_group and self.grid[target_r] then
-      local byte_len = #line
+      local char_len = vim.fn.strchars(line)
       local actual_start = math.max(start_col, 1)
       table.insert(self.highlights, {
         row = target_r - 1,
         start_col = actual_start - 1,
-        end_col = math.min(actual_start + byte_len, self.width + 1) - 1,
+        end_col = math.min(actual_start + char_len, self.width + 1) - 1,
         hl_group = hl_group,
       })
     end
