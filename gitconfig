@@ -1,0 +1,13 @@
+[alias]
+    release = "!f() { \
+        echo 'Fetching latest staging and main branch states...'; \
+        git checkout staging && \
+        git pull origin staging && \
+        git checkout main && \
+        git pull origin main && \
+        echo 'Merging staging into main as a fast-forward merge...'; \
+        git merge staging --ff-only && \
+        git push origin main && \
+        git checkout staging && \
+        echo '🚀 Production fast-forward merge successful!'; \
+    }; f"
