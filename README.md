@@ -1,8 +1,9 @@
-# foyer.nvim 
+# foyer.nvim
 
 `foyer.nvim` is a modern, high-performance entrance screen for Neovim. Unlike traditional dashboards that render components sequentially top-to-bottom, `foyer.nvim` utilizes a 2D memory canvas compositor to blend distinct text, logo, and background layers with true character-level transparency.
 
 ## ⚡ Features
+
 * **4-Layer Matrix Compositor:** Independent processing for background, header, menu, and footer layers.
 * **True Character Transparency:** Background components (like custom starfields) seamlessly peek through empty spacing in foreground elements.
 * **Flawless Resizing:** Instant layout grid recalculations on terminal resize without window clipping or race conditions.
@@ -18,7 +19,7 @@
 
 ### Option A: Integration with LazyVim
 
-To replace the default dashboard in LazyVim, disable the `snacks.nvim` dashboard module in one file and configure `foyer.nvim` in its own.
+To replace the default dashboard in LazyVim, disable the `snacks.nvim` dashboard module and configure `foyer.nvim`.
 
 Create `lua/plugins/dashboard.lua` to disable the default dashboard:
 
@@ -237,8 +238,8 @@ When zone percentages total less than 1.0 (100%), the remaining space is evenly 
 **Padding** (`zone.padding`) is inner spacing — the gap between the zone boundary and where content begins. **Margin** (`zone.margin`) is outer spacing — the gap outside the zone. This follows the same model as CSS.
 
 Each layer also has a `position` object with `row` and `col` options:
-- `row`: `"top"`, `"center"`, or `"bottom"` — vertical alignment within the padded zone
-- `col`: `"left"`, `"center"`, or `"right"` — horizontal alignment within the padded zone
+* `row`: `"top"`, `"center"`, or `"bottom"` — vertical alignment within the padded zone
+* `col`: `"left"`, `"center"`, or `"right"` — horizontal alignment within the padded zone
 
 All layers default to `"center"` for both axes.
 
@@ -387,8 +388,44 @@ foyer.nvim/
 All layers use the centralized `align` module for consistent horizontal and vertical positioning, and `screen.usable()` for accurate viewport dimensions that account for vim's reserved UI space (statusline, cmdheight, tabline).
 
 Debug features are independently toggled:
-- `debug.enabled + debug.zones` draws colored zone boundary overlays via `debug.draw_zones()`
-- `log.enabled + log.zones` writes zone measurements to a log file via `log.log()` / `log.sep()`
+* `debug.enabled + debug.zones` draws colored zone boundary overlays via `debug.draw_zones()`
+* `log.enabled + log.zones` writes zone measurements to a log file via `log.log()` / `log.sep()`
+
+## Deployment Strategy & Branch Management
+
+We use a three-tier branch model to ensure stable production deployments and robust testing. All new developers must run the following command to enable the production release alias:
+`git config --local include.path ../.gitconfig`
+
+### Branches
+
+1. `main` (Production)
+
+* Public-facing, stable version of the plugin.
+* Managed via `git release` (fast-forward merge from `staging`).
+
+1. `staging` (Integration Lane)
+
+* The "source of truth" for the next release.
+* Accepts **squash merges** from `dev` (or `feature/*`/`hotfix/*` in emergencies).
+* Triggers automated testing and build checks on Pull Request.
+
+1. `dev` (Testing Lane)
+
+* Protected branch for final pre-production validation.
+* Requires a Pull Request; triggers all automated tests and build checks.
+* Can be hard reset to `staging` to maintain perfect synchronization.
+
+1. `feature/*` and `hotfix/*` (Work Branches)
+
+* Always spawned from `staging`.
+* Short-lived branches for new features or urgent fixes.
+
+### Release Flow
+
+1. **Development:** Spawn `feature/*` or `hotfix/*` branches from `staging`.
+2. **Validation:** Open a PR from your work branch to `dev`. Validate via automated tests.
+3. **Integration:** Once `dev` is flawless, open a PR from `dev` to `staging`. This performs a **squash merge** into `staging`.
+4. **Production Release:** When `staging` is ready for production, run `git release` to perform a fast-forward merge into `main`.
 
 ## 📄 License
 
