@@ -3,6 +3,9 @@ local Canvas = require("foyer.canvas")
 
 M.bufnr = nil
 
+--- Window ID where foyer is displayed.
+M.winid = nil
+
 --- Saved window options to restore when leaving the foyer buffer.
 M.saved_wo = nil
 
@@ -132,47 +135,57 @@ function M.open()
   }
   for k, v in pairs(opts) do vim.bo[M.bufnr][k] = v end
 
-  -- Save current window options so we can restore them when leaving the dashboard
+  -- Track which window displays the foyer buffer, so we can restore
+  -- window options on the correct window (not whatever is current).
+  -- This mirrors how snacks.dashboard isolates its options via its own window.
+  M.winid = vim.api.nvim_get_current_win()
+
+  -- Save current window options on the foyer window so we can restore them
+  -- when a real file is opened.
   M.saved_wo = {
-    number = vim.wo.number,
-    relativenumber = vim.wo.relativenumber,
-    signcolumn = vim.wo.signcolumn,
-    foldcolumn = vim.wo.foldcolumn,
+    number = vim.wo[M.winid].number,
+    relativenumber = vim.wo[M.winid].relativenumber,
+    signcolumn = vim.wo[M.winid].signcolumn,
+    foldcolumn = vim.wo[M.winid].foldcolumn,
   }
 
-  -- Clean window layout options
-  vim.wo.number = false
-  vim.wo.relativenumber = false
-  vim.wo.signcolumn = "no"
-  vim.wo.foldcolumn = "0"
+  -- Clean window layout options on the foyer window
+  vim.wo[M.winid].number = false
+  vim.wo[M.winid].relativenumber = false
+  vim.wo[M.winid].signcolumn = "no"
+  vim.wo[M.winid].foldcolumn = "0"
 
   M.render()
 
-  -- Restore window options when the foyer buffer is no longer visible anywhere.
-  -- Uses M.saved_wo as a one-time guard: once restored, it's set to nil so
-  -- subsequent events (e.g. BufWipeout, or going back to foyer) are skipped.
-  vim.api.nvim_create_autocmd({ "BufLeave", "BufWipeout" }, {
-    buffer = M.bufnr,
-    callback = function()
-      -- Only restore if the foyer buffer is truly gone from every window.
-      -- This prevents premature restore when a picker/floating window takes
-      -- focus but the foyer dashboard is still visible behind it.
-      local still_visible = false
-      for _, winid in ipairs(vim.api.nvim_list_wins()) do
-        if vim.api.nvim_win_is_valid(winid)
-          and vim.api.nvim_win_get_buf(winid) == M.bufnr then
-          still_visible = true
-          break
-        end
+  -- Global BufEnter autocmd: restores window options on the foyer window
+  -- when a real file buffer is opened.
+  --
+  -- Why global BufEnter instead of BufLeave/BufWipeout on the foyer buffer:
+  -- When a picker opens, focus shifts away from foyer (firing BufLeave), but the
+  -- foyer buffer is still visible in its window behind the picker. A restore at
+  -- that point would cause ghost line numbers while the picker is active.
+  --
+  -- Instead, we wait for a BufEnter of a "real" file (buftype == "") and restore
+  -- on M.winid at that moment. By this time, the file buffer has loaded, the
+  -- window is ready, and the options will take effect immediately.
+  vim.api.nvim_create_autocmd("BufEnter", {
+    callback = function(ev)
+      if not M.saved_wo then return end
+
+      -- Only restore when entering a "real" file buffer (not pickers, terminals, help, etc.)
+      local is_real_file = vim.bo[ev.buf].buftype == ""
+      if not is_real_file then return end
+
+      -- Restore only if the foyer window is still valid
+      if M.winid and vim.api.nvim_win_is_valid(M.winid) then
+        vim.wo[M.winid].number = M.saved_wo.number
+        vim.wo[M.winid].relativenumber = M.saved_wo.relativenumber
+        vim.wo[M.winid].signcolumn = M.saved_wo.signcolumn
+        vim.wo[M.winid].foldcolumn = M.saved_wo.foldcolumn
       end
 
-      if not still_visible and M.saved_wo then
-        vim.wo.number = M.saved_wo.number
-        vim.wo.relativenumber = M.saved_wo.relativenumber
-        vim.wo.signcolumn = M.saved_wo.signcolumn
-        vim.wo.foldcolumn = M.saved_wo.foldcolumn
-        M.saved_wo = nil
-      end
+      -- One-time restore guard
+      M.saved_wo = nil
     end,
   })
 
