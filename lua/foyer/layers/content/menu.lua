@@ -49,15 +49,18 @@ function M.render(canvas, width, _, zone)
     menu_row = inner_top
   end
 
-  -- Horizontal shift: moves icon+desc left and key right, widening the gap
-  -- between description and keymap. Default 0 means no shift.
+  -- Extra horizontal padding inserted between the desc column and the key column.
+  -- The total rendered block width grows by (h_shift * 2): h_shift on the left of
+  -- icon+desc and h_shift on the right of the keymap, so the block stays centered.
   local h_shift = config.h_shift or 0
 
   -- Compute horizontal position within the padded zone.
-  -- The effective block includes the extra gap introduced by h_shift.
+  -- The content block is centered within the effective width (total width minus
+  -- horizontal padding), then offset by pad.left so it respects zone margins.
   local block_width = max_icon_w + 2 + max_desc_w + 2 + max_key_w + (h_shift * 2)
-  local col_offset = align.col(width, block_width, "center")
-  local start_col = 1 + pad.left + col_offset - h_shift
+  local effective_width = width - pad.left - pad.right
+  local col_offset = align.col(effective_width, block_width, "center")
+  local start_col = 1 + pad.left + col_offset
 
   for idx, item in ipairs(prepared) do
     local row = menu_row + (idx - 1) * 2
