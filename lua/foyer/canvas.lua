@@ -32,6 +32,8 @@ end
 --- Operates at the character level (not byte level) so that multi-byte UTF-8
 --- characters (e.g. Nerd Font icons) occupy exactly one canvas column each,
 --- matching the terminal's display behavior.
+--- Highlight extmarks use byte positions (required by Neovim), not character
+--- counts, so we compute byte ranges from the actual grid cell content.
 --- @param lines table Array of strings representing the graphic asset
 --- @param start_row number 1-indexed top coordinate
 --- @param start_col number 1-indexed left coordinate
@@ -42,19 +44,17 @@ function Canvas:blend(lines, start_row, start_col, transparent, hl_group)
     local target_r = start_row + r_offset - 1
     if target_r > self.height then break end
 
-    -- Measure character count (not byte count) for correct column alignment
     local char_count = vim.fn.strchars(line)
+    local first_c = nil
+    local last_c = nil
 
     for c_offset = 0, char_count - 1 do
       local target_c = start_col + c_offset
       if target_c > self.width then break end
       if target_c < 1 then
-        -- Skip leading columns that fall off the left edge,
-        -- but still advance the loop to stay in sync
         goto continue
       end
 
-      -- Extract one full character (may be multi-byte UTF-8)
       local char = char_at(line, c_offset)
 
       if not (transparent and char == " ") then
@@ -63,18 +63,30 @@ function Canvas:blend(lines, start_row, start_col, transparent, hl_group)
         end
       end
 
+      if first_c == nil then first_c = target_c end
+      last_c = target_c
+
       ::continue::
     end
 
     -- Save highlights bound to this row segment.
-    -- Use character count (not byte length) for correct highlight boundaries.
-    if hl_group and self.grid[target_r] then
-      local char_len = vim.fn.strchars(line)
-      local actual_start = math.max(start_col, 1)
+    -- Use byte positions derived from the grid (not character counts),
+    -- so multi-byte characters produce correct extmark ranges.
+    if hl_group and self.grid[target_r] and first_c then
+      local byte_start = 0
+      for c = 1, first_c - 1 do
+        byte_start = byte_start + #self.grid[target_r][c]
+      end
+
+      local byte_pos = byte_start
+      for c = first_c, last_c do
+        byte_pos = byte_pos + #self.grid[target_r][c]
+      end
+
       table.insert(self.highlights, {
         row = target_r - 1,
-        start_col = actual_start - 1,
-        end_col = math.min(actual_start + char_len, self.width + 1) - 1,
+        start_col = byte_start,
+        end_col = byte_pos - 1,
         hl_group = hl_group,
       })
     end

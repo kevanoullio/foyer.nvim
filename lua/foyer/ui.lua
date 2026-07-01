@@ -134,6 +134,7 @@ function M.open()
     modifiable = false,
   }
   for k, v in pairs(opts) do vim.bo[M.bufnr][k] = v end
+  vim.bo[M.bufnr].syntax = "OFF"
 
   -- Track which window displays the foyer buffer, so we can restore
   -- window options on the correct window (not whatever is current).
