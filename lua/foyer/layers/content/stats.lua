@@ -122,12 +122,9 @@ function M.render(canvas, width, _, zone, config, bufnr)
     ---@param root string Root directory to scan
     ---@param max_depth integer Maximum recursion depth
     ---@param batch integer Entries per defer_fn tick
-    ---@param max_entries integer Total entry limit
     ---@param skip table<string, true> Directory names to skip recursion into
-    ---@param ignore_checker { is_ignored: fun(relpath: string, name: string, is_dir: boolean): boolean, flush: fun(cb: fun())? }|nil
-    ---@param ignore_patterns string[] Lua patterns for custom ignores
     ---@param cb fun(folders: integer, hidden_folders: integer, files: integer, hidden_files: integer, capped: {f: boolean, hf: boolean, fi: boolean, hi: boolean})
-    local function async_scan(root, max_depth, batch, max_entries, skip, ignore_checker, ignore_patterns, cb)
+    local function async_scan(root, max_depth, batch, skip, cb)
       local result = { f = 0, hf = 0, fi = 0, hi = 0 }
       local dirs = { { path = root, hidden = false, depth = max_depth, relpath = "" } }
       local total = 0
@@ -148,7 +145,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
           local child_path = vim.fs.joinpath(current.path, item.name)
           local stat = vim.uv.fs_stat(child_path)
 
-          if ignore_checker and ignore_checker.is_ignored(item.relpath, item.name, stat and stat.type == "directory") then
+          if ignore_checker and ignore_checker.is_ignored(item.relpath, item.name, stat and stat.type == "directory" or false) then
             goto skip end
 
           for _, pat in ipairs(ignore_patterns) do
@@ -237,7 +234,7 @@ function M.render(canvas, width, _, zone, config, bufnr)
       vim.defer_fn(scan_next_dir, 100)
     end
 
-    async_scan(path, depth, batch_size, max_entries, skip_dirs, ignore_checker, ignore_patterns, function(folders, hidden_folders, files, hidden_files, capped)
+    async_scan(path, depth, batch_size, skip_dirs, function(folders, hidden_folders, files, hidden_files, capped)
       if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
       M.update(bufnr, fs_stats_row, folders, hidden_folders, files, hidden_files, config, capped)
     end)

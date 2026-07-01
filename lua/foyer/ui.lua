@@ -3,6 +3,12 @@ local Canvas = require("foyer.canvas")
 
 M.bufnr = nil
 
+--- Window ID where foyer is displayed.
+M.winid = nil
+
+--- Saved window options to restore when leaving the foyer buffer.
+M.saved_wo = nil
+
 --- Default margin value applied to all sides when not explicitly configured.
 local DEFAULT_MARGIN = 0
 
@@ -98,8 +104,9 @@ end
 M.compute_zones = compute_content_zones
 
 --- Opens the Foyer dashboard in a new scratch buffer or switches to an existing one.
---- Creates the buffer, configures window options, triggers render, and sets up
---- dynamic resizing on VimResized.
+--- If called on startup (reusing the initial empty buffer), it repurposes that
+--- buffer instead of creating an extra one. Creates the buffer, configures window
+--- options, triggers render, and sets up dynamic resizing on VimResized.
 --- @return nil
 function M.open()
   if M.bufnr and vim.api.nvim_buf_is_valid(M.bufnr) then
@@ -107,8 +114,16 @@ function M.open()
     return
   end
 
-  M.bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_set_current_buf(M.bufnr)
+  -- Reuse the initial empty buffer if it exists, to avoid leaving a stale
+  -- empty buffer behind when foyer is closed. This matches how snacks/dashboard
+  -- behave (no extra empty buffer after picking a file).
+  local cur_buf = vim.api.nvim_get_current_buf()
+  if vim.api.nvim_buf_get_name(cur_buf) == "" and vim.bo[cur_buf].buftype == "" then
+    M.bufnr = cur_buf
+  else
+    M.bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(M.bufnr)
+  end
 
   -- Set safe buffer options for a pristine, non-file screen
   local opts = {
@@ -119,14 +134,64 @@ function M.open()
     modifiable = false,
   }
   for k, v in pairs(opts) do vim.bo[M.bufnr][k] = v end
+  vim.bo[M.bufnr].syntax = "OFF"
 
-  -- Clean window layout options
-  vim.wo.number = false
-  vim.wo.relativenumber = false
-  vim.wo.signcolumn = "no"
-  vim.wo.foldcolumn = "0"
+  -- Track which window displays the foyer buffer, so we can restore
+  -- window options on the correct window (not whatever is current).
+  -- This mirrors how snacks.dashboard isolates its options via its own window.
+  M.winid = vim.api.nvim_get_current_win()
+
+  -- Save current window options on the foyer window so we can restore them
+  -- when a real file is opened.
+  M.saved_wo = {
+    number = vim.wo[M.winid].number,
+    relativenumber = vim.wo[M.winid].relativenumber,
+    signcolumn = vim.wo[M.winid].signcolumn,
+    foldcolumn = vim.wo[M.winid].foldcolumn,
+    cursorline = vim.wo[M.winid].cursorline,
+  }
+
+  -- Clean window layout options on the foyer window
+  vim.wo[M.winid].number = false
+  vim.wo[M.winid].relativenumber = false
+  vim.wo[M.winid].signcolumn = "no"
+  vim.wo[M.winid].foldcolumn = "0"
+  vim.wo[M.winid].cursorline = true
 
   M.render()
+
+  -- Global BufEnter autocmd: restores window options on the foyer window
+  -- when a real file buffer is opened.
+  --
+  -- Why global BufEnter instead of BufLeave/BufWipeout on the foyer buffer:
+  -- When a picker opens, focus shifts away from foyer (firing BufLeave), but the
+  -- foyer buffer is still visible in its window behind the picker. A restore at
+  -- that point would cause ghost line numbers while the picker is active.
+  --
+  -- Instead, we wait for a BufEnter of a "real" file (buftype == "") and restore
+  -- on M.winid at that moment. By this time, the file buffer has loaded, the
+  -- window is ready, and the options will take effect immediately.
+  vim.api.nvim_create_autocmd("BufEnter", {
+    callback = function(ev)
+      if not M.saved_wo then return end
+
+      -- Only restore when entering a "real" file buffer (not pickers, terminals, help, etc.)
+      local is_real_file = vim.bo[ev.buf].buftype == ""
+      if not is_real_file then return end
+
+      -- Restore only if the foyer window is still valid
+      if M.winid and vim.api.nvim_win_is_valid(M.winid) then
+        vim.wo[M.winid].number = M.saved_wo.number
+        vim.wo[M.winid].relativenumber = M.saved_wo.relativenumber
+        vim.wo[M.winid].signcolumn = M.saved_wo.signcolumn
+        vim.wo[M.winid].foldcolumn = M.saved_wo.foldcolumn
+        vim.wo[M.winid].cursorline = M.saved_wo.cursorline
+      end
+
+      -- One-time restore guard
+      M.saved_wo = nil
+    end,
+  })
 
   -- Dynamic resizing listener
   vim.api.nvim_create_autocmd("VimResized", {

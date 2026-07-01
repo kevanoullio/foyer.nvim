@@ -1,22 +1,46 @@
 local M = {}
 
---- Tries installed pickers in order: fzf-lua -> telescope -> mini.pick.
+--- Tries installed pickers in order: snacks -> fzf-lua -> telescope -> mini.pick.
 --- Calls the first one that loads and exits. Falls back to a notification.
----@param cmd string Picker command: "files", "live_grep", "oldfiles"
+---@param cmd string Picker command: "files", "live_grep", "oldfiles", "projects"
 ---@param opts? {cwd?: string} Options forwarded to the picker
 ---@return boolean true if a picker was found and executed
 local function pick(cmd, opts)
   opts = opts or {}
   local picker_opts = opts.cwd and { cwd = opts.cwd } or {}
 
+  -- Map command names to each picker's actual source/function names.
+  -- Different pickers use different names for the same operation.
+  local aliases = {
+    live_grep = { snacks = "grep", telescope = "live_grep", fzf_lua = "live_grep", mini_pick = "grep" },
+    oldfiles  = { snacks = "recent", telescope = "oldfiles", fzf_lua = "oldfiles", mini_pick = "oldfiles" },
+    files     = { snacks = "files", telescope = "find_files", fzf_lua = "files", mini_pick = "files" },
+  }
+
   local try = {
-    function() return require("fzf-lua")[cmd](picker_opts) end,
+    -- Snacks picker first (LazyVim default, highest priority)
+    function()
+      local snacks = require("snacks")
+      if cmd == "projects" then
+        return snacks.picker.projects()
+      end
+      local source = (aliases[cmd] and aliases[cmd].snacks) or cmd
+      return snacks.picker[source](picker_opts)
+    end,
+    -- External pickers
+    function()
+      local source = (aliases[cmd] and aliases[cmd].fzf_lua) or cmd
+      return require("fzf-lua")[source](picker_opts)
+    end,
     function()
       local builtin = require("telescope.builtin")
-      local fn = cmd == "files" and "find_files" or cmd
-      return builtin[fn](picker_opts)
+      local source = (aliases[cmd] and aliases[cmd].telescope) or cmd
+      return builtin[source](picker_opts)
     end,
-    function() return require("mini.pick").builtin[cmd](picker_opts) end,
+    function()
+      local source = (aliases[cmd] and aliases[cmd].mini_pick) or cmd
+      return require("mini.pick").builtin[source](picker_opts)
+    end,
   }
 
   for _, fn in ipairs(try) do
@@ -92,7 +116,7 @@ M.config = {
     },
     zone = {
       percentage = 0.30,
-      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      padding = { top = 1, bot = 1, left = 1, right = 1 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
   },
@@ -101,6 +125,7 @@ M.config = {
     items = {
       { icon = " ", key = "f", desc = "Find File", action = function() pick("files") end },
       { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
+      { icon = " ", key = "p", desc = "Projects", action = function() pick("projects") end },
       { icon = " ", key = "g", desc = "Find Text", action = function() pick("live_grep") end },
       { icon = " ", key = "r", desc = "Recent Files", action = function() pick("oldfiles") end },
       { icon = " ", key = "c", desc = "Config", action = function() pick("files", { cwd = vim.fn.stdpath("config") }) end },
@@ -115,12 +140,15 @@ M.config = {
     },
     zone = {
       percentage = 0.40,
-      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      padding = { top = 1, bot = 1, left = 1, right = 1 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
     hl_icon = "Special",
     hl_desc = "Normal",
     hl_key = "Keyword",
+    -- Horizontal shift: moves icon+desc left and key right (each by this many chars),
+    -- widening the gap between description and keymap. Set to 0 for default centered layout.
+    h_shift = 10,
   },
 
   stats = {
@@ -148,7 +176,7 @@ M.config = {
     },
     zone = {
       percentage = 0.15,
-      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      padding = { top = 1, bot = 1, left = 1, right = 1 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
     hl_text = "Comment",
@@ -163,7 +191,7 @@ M.config = {
     },
     zone = {
       percentage = 0.15,
-      padding = { top = 2, bot = 2, left = 2, right = 2 },
+      padding = { top = 1, bot = 1, left = 1, right = 1 },
       margin = { top = 0, bot = 0, left = 0, right = 0 },
     },
   },
@@ -176,7 +204,8 @@ M.config = {
   log = {
     enabled = false,
     zones = false,
-    file = "./foyer-debug.log",
+    -- nil resolves to stdpath("state")/foyer/foyer-debug.log at runtime
+    file = nil,
   },
 }
 

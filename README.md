@@ -133,6 +133,7 @@ require("foyer").setup({
     items = {
       { icon = " ", key = "f", desc = "Find File",       action = function() require("foyer").pick("files") end },
       { icon = " ", key = "n", desc = "New File",        action = ":ene | startinsert" },
+      { icon = " ", key = "p", desc = "Projects",        action = function() require("foyer").pick("projects") end },
       { icon = " ", key = "g", desc = "Find Text",       action = function() require("foyer").pick("live_grep") end },
       { icon = " ", key = "r", desc = "Recent Files",    action = function() require("foyer").pick("oldfiles") end },
       { icon = " ", key = "c", desc = "Config",          action = ":e $MYVIMRC" },
