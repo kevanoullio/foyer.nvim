@@ -76,9 +76,16 @@ function M.render(canvas, width, _, zone)
     canvas:blend({ item.desc }, row, desc_col, true, config.hl_desc)
     canvas:blend({ item.key_display }, row, key_col, true, config.hl_key)
 
+    -- Compute the byte index of desc_col in the rendered line.
+    -- nvim_win_set_cursor expects a byte index, not a character index.
+    -- Without this conversion, multi-byte Nerd Font icons (3 bytes each)
+    -- create an offset between the character and byte position.
+    local row_line = table.concat(canvas.grid[row])
+    local cursor_col = vim.fn.byteidx(row_line, desc_col - 1)
+
     table.insert(interactive_lines, {
       row = row,
-      col = desc_col,
+      col = cursor_col,
       key = item.raw.key,
       action = item.raw.action,
     })

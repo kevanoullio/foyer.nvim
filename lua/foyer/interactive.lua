@@ -2,18 +2,18 @@ local M = {}
 
 --- Attaches cursor navigation, Enter binding, and key shortcuts to the dashboard buffer.
 --- Canvas rows are 1-indexed and passed through as-is for cursor positioning (1-indexed).
---- Canvas columns are converted from 1-indexed to 0-indexed for cursor positioning.
+--- Canvas columns are pre-computed byte indices (0-indexed) by the menu layer.
 ---@param bufnr number Buffer handle
 ---@param interactive_rows {row: number, col: number, key?: string, action: string|function}[] Menu rows from dashboard render
 function M.attach(bufnr, interactive_rows)
   if #interactive_rows == 0 then return end
 
-  -- Convert 1-indexed canvas columns to 0-indexed cursor columns
+  -- Column values are already 0-indexed byte indices from the menu layer
   local cursor_rows = {}
   for _, item in ipairs(interactive_rows) do
     table.insert(cursor_rows, {
       row = item.row,
-      col = item.col - 1,
+      col = item.col,
       key = item.key,
       action = item.action,
     })
@@ -27,7 +27,7 @@ function M.attach(bufnr, interactive_rows)
     row_map[item.row] = item.action
   end
 
-  -- Sorted list of valid menu row numbers (0-indexed) for quick lookup
+  -- Sorted list of valid menu row numbers for quick lookup
   local sorted_rows = {}
   for _, item in ipairs(cursor_rows) do
     table.insert(sorted_rows, item.row)
