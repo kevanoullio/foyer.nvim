@@ -86,7 +86,7 @@ function Canvas:blend(lines, start_row, start_col, transparent, hl_group)
       table.insert(self.highlights, {
         row = target_r - 1,
         start_col = byte_start,
-        end_col = byte_pos - 1,
+        end_col = byte_pos,
         hl_group = hl_group,
       })
     end
