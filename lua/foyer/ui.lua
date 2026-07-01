@@ -3,6 +3,9 @@ local Canvas = require("foyer.canvas")
 
 M.bufnr = nil
 
+--- Saved window options to restore when leaving the foyer buffer.
+M.saved_wo = nil
+
 --- Default margin value applied to all sides when not explicitly configured.
 local DEFAULT_MARGIN = 0
 
@@ -129,6 +132,14 @@ function M.open()
   }
   for k, v in pairs(opts) do vim.bo[M.bufnr][k] = v end
 
+  -- Save current window options so we can restore them when leaving the dashboard
+  M.saved_wo = {
+    number = vim.wo.number,
+    relativenumber = vim.wo.relativenumber,
+    signcolumn = vim.wo.signcolumn,
+    foldcolumn = vim.wo.foldcolumn,
+  }
+
   -- Clean window layout options
   vim.wo.number = false
   vim.wo.relativenumber = false
@@ -136,6 +147,24 @@ function M.open()
   vim.wo.foldcolumn = "0"
 
   M.render()
+
+  -- Restore window options when the user leaves the foyer buffer
+  local restore_watched = false
+  vim.api.nvim_create_autocmd({ "BufLeave", "BufWipeout" }, {
+    buffer = M.bufnr,
+    callback = function()
+      -- Guard against double-fire (BufLeave + BufWipeout can both trigger)
+      if restore_watched then return end
+      restore_watched = true
+
+      if M.saved_wo then
+        vim.wo.number = M.saved_wo.number
+        vim.wo.relativenumber = M.saved_wo.relativenumber
+        vim.wo.signcolumn = M.saved_wo.signcolumn
+        vim.wo.foldcolumn = M.saved_wo.foldcolumn
+      end
+    end,
+  })
 
   -- Dynamic resizing listener
   vim.api.nvim_create_autocmd("VimResized", {
