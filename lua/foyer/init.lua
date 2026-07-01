@@ -9,6 +9,14 @@ local function pick(cmd, opts)
   opts = opts or {}
   local picker_opts = opts.cwd and { cwd = opts.cwd } or {}
 
+  -- Map command names to each picker's actual source/function names.
+  -- Different pickers use different names for the same operation.
+  local aliases = {
+    live_grep = { snacks = "grep", telescope = "live_grep", fzf_lua = "live_grep", mini_pick = "grep" },
+    oldfiles  = { snacks = "recent", telescope = "oldfiles", fzf_lua = "oldfiles", mini_pick = "oldfiles" },
+    files     = { snacks = "files", telescope = "find_files", fzf_lua = "files", mini_pick = "files" },
+  }
+
   local try = {
     -- Snacks picker first (LazyVim default, highest priority)
     function()
@@ -16,16 +24,23 @@ local function pick(cmd, opts)
       if cmd == "projects" then
         return snacks.picker.projects()
       end
-      return snacks.picker[cmd](picker_opts)
+      local source = (aliases[cmd] and aliases[cmd].snacks) or cmd
+      return snacks.picker[source](picker_opts)
     end,
     -- External pickers
-    function() return require("fzf-lua")[cmd](picker_opts) end,
+    function()
+      local source = (aliases[cmd] and aliases[cmd].fzf_lua) or cmd
+      return require("fzf-lua")[source](picker_opts)
+    end,
     function()
       local builtin = require("telescope.builtin")
-      local fn = cmd == "files" and "find_files" or cmd
-      return builtin[fn](picker_opts)
+      local source = (aliases[cmd] and aliases[cmd].telescope) or cmd
+      return builtin[source](picker_opts)
     end,
-    function() return require("mini.pick").builtin[cmd](picker_opts) end,
+    function()
+      local source = (aliases[cmd] and aliases[cmd].mini_pick) or cmd
+      return require("mini.pick").builtin[source](picker_opts)
+    end,
   }
 
   for _, fn in ipairs(try) do
