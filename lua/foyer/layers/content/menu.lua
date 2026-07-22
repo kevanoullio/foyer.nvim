@@ -80,7 +80,9 @@ function M.render(canvas, width, _, zone)
     -- nvim_win_set_cursor expects a byte index, not a character index.
     -- Without this conversion, multi-byte Nerd Font icons (3 bytes each)
     -- create an offset between the character and byte position.
-    local row_line = table.concat(canvas.grid[row])
+    local grid_row = canvas.grid[row]
+    if not grid_row then return menu_row + (#prepared * 2), interactive_lines end
+    local row_line = table.concat(grid_row)
     local cursor_col = vim.fn.byteidx(row_line, desc_col - 1)
 
     table.insert(interactive_lines, {
